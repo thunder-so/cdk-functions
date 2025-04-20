@@ -1,0 +1,43 @@
+{
+  "name": "@thunderso/cdk-functions",
+  "version": "0.1.0",
+  "description": "CDK Library for provisioning Lambda functions with various runtimes and configurations.",
+  "tags": [
+    "aws",
+    "cdk",
+    "lambda",
+    "typescript"
+  ],
+  "type": "module",
+  "main": "index.ts",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/thunder-so/cdk-functions.git"
+  },
+  "author": {
+    "name": "CloudBits, Inc.",
+    "url": "https://www.thunder.so",
+    "organization": true
+  },
+  "license": "Apache-2.0",
+  "scripts": {
+    "cdk": "cdk",
+    "build": "tsc -b .",
+    "clean": "tsc -b --clean",
+    "watch": "tsc -b -w"
+  },
+  "devDependencies": {
+    "@types/jest": "^29.5.12",
+    "@types/node": "22.4.0",
+    "aws-cdk": "2.150.0",
+    "tsx": "^4.17.0",
+    "typescript": "~5.5.4"
+  },
+  "dependencies": {
+    "aws-cdk-lib": "2.150.0",
+    "constructs": "^10.3.0",
+    "shelljs": "^0.8.5",
+    "source-map-support": "^0.5.21",
+    "yaml": "^2.5.0"
+  }
+}
