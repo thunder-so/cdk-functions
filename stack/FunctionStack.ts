@@ -21,7 +21,7 @@ export class FunctionStack extends Stack {
       return path.replace(/^\/+|\/+$/g, '');
     };
 
-    const rootDir = sanitizePath(props.sourceProps?.rootDir);
+    const rootDir = sanitizePath(props?.rootDir);
     const codeDir = sanitizePath(props.functionProps?.codeDir);
 
     new FunctionsConstruct(this, 'Functions', {
@@ -29,9 +29,7 @@ export class FunctionStack extends Stack {
       application: props.application,
       service: props.service,
       environment: props.environment,
-      sourceProps: {
-        rootDir: rootDir,
-      },
+      rootDir: rootDir,
       functionProps: {
         url: props.functionProps?.url,
         runtime: props.functionProps?.runtime,

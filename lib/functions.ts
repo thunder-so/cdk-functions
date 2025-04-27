@@ -14,9 +14,7 @@ export interface FunctionsProps {
   readonly application: string;
   readonly service: string;
   readonly environment: string;
-  readonly sourceProps?: {
-    rootDir?: string;
-  };
+  readonly rootDir?: string;
   readonly functionProps?: {
     url?: boolean;
     runtime?: Runtime;
@@ -91,7 +89,7 @@ export class FunctionsConstruct extends Construct {
    */
   private createLambdaFunction(props: FunctionsProps): Function {
     // Create the Lambda function
-    const codeDirectory = `${props.sourceProps?.rootDir || '.'}/${props.functionProps?.codeDir || ''}`;
+    const codeDirectory = `${props?.rootDir || '.'}/${props.functionProps?.codeDir || ''}`;
 
     const lambdaFunction = new Function(this, 'Function', {
       functionName: `${this.resourceIdPrefix}-Function`,

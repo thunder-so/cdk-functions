@@ -1,5 +1,5 @@
-import { Runtime, Architecture} from 'aws-cdk-lib/aws-lambda';
 import {type StackProps} from "aws-cdk-lib";
+import { Runtime, Architecture} from 'aws-cdk-lib/aws-lambda';
 
 export interface FunctionProps extends StackProps {
 
@@ -34,9 +34,11 @@ export interface FunctionProps extends StackProps {
      */
     readonly environment: string;
 
-    readonly sourceProps?: {
-      rootDir?: string;
-    }
+    /**
+     * The path to the root directory of the app (at which the `package.json` file is located).
+     * Defaults to '.'.
+     */
+    readonly rootDir?: string;
      
     /**
      * Configure the Lambda function
