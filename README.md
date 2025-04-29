@@ -100,9 +100,11 @@ const fnStackProps: FunctionProps = {
   service: 'your-service-id',
   environment: 'dev',
 
+  rootDir: '', // supports monorepos e.g. api/ 
+
   // Configure the function
   functionProps: {
-    codeDir: 'dist',
+    codeDir: 'dist/',
     handler: 'index.handler',
   },
 
