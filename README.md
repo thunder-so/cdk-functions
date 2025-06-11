@@ -9,13 +9,21 @@
 
 The easiest way to deploy an API on AWS Lambda with modern web frameworks. 
 
+This library supports three ways to deploy your API:
+
+1. Standard Lambda and API Gateway.
+
+2. Node.js runtime container image on Lambda.
+
+3. Bun runtime container image on Lambda.
+
 Supported frameworks:
 
 - [Express.js](https://expressjs.com/)
 - [Hono](https://hono.dev/)
+- [NestJS](https://nestjs.com/)
 - [Fastify](https://www.fastify.io/)
 - [Koa](https://koajs.com/)
-- [NestJS](https://nestjs.com/)
 - [AdonisJS](https://adonisjs.com/)
 - [Sails.js](https://sailsjs.com/)
 - [LoopBack](https://loopback.io/)
@@ -196,24 +204,36 @@ const fnStackProps: FunctionProps = {
 
 # Using environment variables
 
-Create a secure parameter in SSM Parameter Store:
+Pass environment variables to your lambda function by:
+
+1. Variables: string key and value pair.
+
+2. Secrets stored in SSM Secrets Manager as secure string. The library automatically adds the necessary permissions to the Lambda function's role to read parameters from SSM .
+
+To create a plaintext secret in AWS Secrets Manager using the AWS CLI:
 
 ```bash
-aws ssm put-parameter --name "/my-app/API_KEY" --type "SecureString" --value "your-secret-api-key"
+aws secretsmanager create-secret --name "your-secret-name" --secret-string "your-secret-value"
 ```
-
-Pass environment variables to your lambda function to inject secrets. The library automatically adds the necessary permissions to the Lambda function's role to read parameters from SSM Parameter Store.
 
 ```ts
 // stack/index.ts
 const appStackProps: SPAProps = {
   // ... other props
 
-  environmentVariables: [
-    { key: 'API_URL', resource: '/my-app/API_URL' },
-    { key: 'API_KEY', resource: '/my-app/API_KEY' },
-  ],
+  functionProps: {
+    // ... other props
 
+    variables: [
+      { VITE_API_URL: 'https://api.example.com' },
+      { VITE_ANALYTICS_ID: 'UA-XXXXXX' }
+    ],
+
+    secrets: [
+      { key: 'API_URL', resource: '/my-app/API_URL' },
+      { key: 'API_KEY', resource: '/my-app/API_KEY' },
+    ],
+  }
 };
 ```
 
@@ -239,6 +259,7 @@ const fnStackProps: FunctionProps = {
     memorySize: 1792,
     timeout: 10,
     tracing: true,
+    include: ['package.json', 'package-lock.json'],
     exclude: ['**/*.ts', '**/*.map'],
   },
 
@@ -279,11 +300,6 @@ Specifies the function within your code that Lambda calls to start executing you
 - **Usage Example**: `handler: 'index.handler'`
 - **Default**: `handler: 'index.handler'`
 
-### `exclude`
-Lists the file patterns that should be excluded from the Lambda deployment package.
-- **Type**: `string[]`
-- **Usage Example**: `exclude: ['*.test.js', 'README.md']`
-
 ### `memorySize`
 The amount of memory, in MB, allocated to the Lambda function.
 - **Type**: `number`
@@ -301,6 +317,17 @@ Enables or disables AWS X-Ray tracing for the Lambda function.
 - **Type**: `boolean`
 - **Default**: `false`
 - **Usage Example**: `tracing: true`
+
+### `include`
+Lists the files to be included to the Docker context (your build output directory)
+- **Type**: `string[]`
+- **Usage Example**: `exclude: ['package.json', 'bun.lock']`
+
+### `exclude`
+Lists the file patterns that should be excluded from the Lambda deployment package.
+- **Type**: `string[]`
+- **Usage Example**: `exclude: ['*.test.js', 'README.md']`
+
 
 
 # Advanced: Scaling Properties
@@ -340,3 +367,154 @@ Provisioned concurrency keeps a set of pre-initialized environments ready to res
 - **Example**: `provisionedConcurrency: 10`
 
 While both reserved and provisioned concurrency deal with execution limits, they serve different purposes. Reserved concurrency guarantees a portion of the total function pool across your AWS account, while provisioned concurrency is specifically about warming up a set number of function instances to achieve low-latency execution.
+
+
+## Deploying with Lambda Container Images
+
+CDK-Functions supports deploying your API as a Lambda container image, allowing you to use custom runtimes or package dependencies that exceed the Lambda zip package size limit. This is especially useful for advanced use cases or when using alternative runtimes like Bun.
+
+### Node.js Runtime Container Image
+---
+
+To deploy your function using a Node.js container image:
+
+1. **Create a Dockerfile** (e.g., `Dockerfile.node`) in your project root:
+
+```dockerfile title="Dockerfile.node"
+FROM public.ecr.aws/lambda/nodejs:22 AS base
+WORKDIR ${LAMBDA_TASK_ROOT}
+
+# Copy your build output and install dependencies
+COPY . .
+
+# If needed, include the package.json and install dependencies
+RUN npm install --omit=dev 
+
+# Set the Lambda handler
+CMD [ "index.handler" ]
+```
+
+Depending on your framework, there may not be an `index.js` file in your build output which exports a `handler`. Ensure your entrypoint is correct.
+
+2. **Configure your stack** to use the Dockerfile:
+
+```ts
+// stack/node.ts
+import { App } from "aws-cdk-lib";
+import { FunctionStack, type FunctionProps } from '@thunderso/cdk-functions';
+
+const fnStackProps: FunctionProps = {
+  // ... other props ...
+  functionProps: {
+    codeDir: 'dist',
+    dockerFile: 'Dockerfile.node',
+    include: [
+      'package.json', // include the package.json
+    ],
+  },
+};
+
+new FunctionStack(new App(), 
+    `${fnStackProps.application}-${fnStackProps.service}-${fnStackProps.environment}-stack`, 
+    fnStackProps
+);
+```
+
+3. **Deploy** as usual:
+
+```bash
+npx cdk deploy --require-approval never --all --app="npx tsx stack/node.ts"
+```
+
+### Bun Runtime Container Image
+---
+
+You can also deploy your Lambda using the [Bun](https://bun.sh/) runtime by building a custom container image.
+
+1. **Create a Dockerfile** (e.g., `Dockerfile.bun`):
+
+```dockerfile
+# Builder image
+FROM oven/bun:latest AS bun
+WORKDIR /tmp
+
+RUN apt-get update && apt-get install -y curl
+RUN curl -fsSL https://raw.githubusercontent.com/oven-sh/bun/main/packages/bun-lambda/runtime.ts -o /tmp/runtime.ts
+RUN bun install aws4fetch
+RUN bun build --compile runtime.ts --outfile bootstrap
+
+# Runtime image
+FROM public.ecr.aws/lambda/provided:al2023
+WORKDIR ${LAMBDA_TASK_ROOT}
+
+COPY --from=bun /usr/local/bin/bun /opt/bun
+COPY --from=bun /tmp/bootstrap ${LAMBDA_RUNTIME_DIR}
+
+# Copy your build output and install dependencies
+COPY . .
+
+# If needed, include the package.json and install dependencies
+RUN /opt/bun install --frozen-lockfile
+
+CMD [ "lambda-bun.fetch" ]
+```
+
+2. Create the Bun Lambda handler
+
+Bun requires a fetch-compatible handler because Bun’s server runtime is designed to be compatible with the Fetch API, which is a standard web API for handling HTTP requests and responses. In Bun, serverless functions or HTTP handlers are expected to export a function (often called fetch) that matches the signature:
+
+```ts
+async function fetch(request: Request): Promise<Response>
+```
+
+This approach allows Bun to handle HTTP requests in a way that is consistent with modern web standards, making it easier to share code between server and client, and to integrate with frameworks like Hono or Nitro that also use the Fetch API model.
+
+Create a handler file `lambda-bun.js` in your root directory.
+
+```ts
+// lambda-bun.js (for Bun + Hono + Nitro)
+const { handler } = require('./index.js');
+
+exports.fetch = handler;
+```
+
+3. **Configure your stack**:
+
+```ts
+// stack/bun.ts
+import { App } from "aws-cdk-lib";
+import { FunctionStack, type FunctionProps } from '@thunderso/cdk-functions';
+
+const fnStackProps: FunctionProps = {
+  // ... other props ...
+  functionProps: {
+    codeDir: 'dist',
+    dockerFile: 'Dockerfile.bun',
+    include: [
+      'package.json', // Include the package.json in the Docker context
+      'bun.lockb', // Include lockfile
+      'lambda-bun.js' // Include the handler in the Docker context
+    ],
+  },
+};
+
+new FunctionStack(new App(), 
+    `${fnStackProps.application}-${fnStackProps.service}-${fnStackProps.environment}-stack`, 
+    fnStackProps
+);
+```
+
+3. **Deploy** as usual:
+
+```bash
+npx cdk deploy --require-approval never --all --app="bunx tsx stack/bun.ts"
+```
+
+### Notes on Container Lambda Deployments
+
+- The `dockerFile` property in `functionProps` tells CDK-Functions to build and deploy your Lambda using the specified Dockerfile.
+- Use the `include` property to ensure all necessary files (such as your handler, `package.json`, or lockfiles) are available in the Docker build context.
+- You can pass build arguments to your Docker build using the `dockerBuildArgs` property.
+- All other configuration options (environment variables, secrets, concurrency, etc.) are supported as with standard Lambda deployments.
+
+For more information, refer to the [CDK documentation on container images](https://docs.aws.amazon.com/lambda/latest/dg/images-create.html).

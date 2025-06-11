@@ -15,39 +15,6 @@ export class FunctionStack extends Stack {
       throw new Error('Mandatory stack properties missing.');
     }
 
-    // Sanitize paths to remove leading and trailing slashes
-    const sanitizePath = (path: string | undefined): string => {
-      if (!path) return '';
-      return path.replace(/^\/+|\/+$/g, '');
-    };
-
-    const rootDir = sanitizePath(props?.rootDir);
-    const codeDir = sanitizePath(props.functionProps?.codeDir);
-
-    new FunctionsConstruct(this, 'Functions', {
-      debug: props.debug, 
-      application: props.application,
-      service: props.service,
-      environment: props.environment,
-      rootDir: rootDir,
-      functionProps: {
-        url: props.functionProps?.url,
-        runtime: props.functionProps?.runtime,
-        architecture: props.functionProps?.architecture,
-        codeDir: codeDir,
-        handler: props.functionProps?.handler,
-        exclude: props.functionProps?.exclude,
-        memorySize: props.functionProps?.memorySize,
-        timeout: props.functionProps?.timeout,
-        tracing: props.functionProps?.tracing,
-        reservedConcurrency: props.functionProps?.reservedConcurrency,
-        provisionedConcurrency: props.functionProps?.provisionedConcurrency,
-      },
-      environmentVariables: props.environmentVariables,
-      domain: props.domain,
-      regionalCertificateArn: props.regionalCertificateArn,
-      hostedZoneId: props.hostedZoneId
-    });
-
+    new FunctionsConstruct(this, 'Functions', props);
   }
 }

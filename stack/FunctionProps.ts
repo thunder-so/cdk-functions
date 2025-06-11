@@ -44,33 +44,37 @@ export interface FunctionProps extends StackProps {
      * Configure the Lambda function
      */
     readonly functionProps: {
-      url?: boolean;
-      runtime?: Runtime;
-      architecture?: Architecture;
-      codeDir?: string;
-      handler?: string;
-      exclude?: string[];
-      memorySize?: number;
-      timeout?: number;
-      tracing?: boolean;
-      reservedConcurrency?: number;
-      provisionedConcurrency?: number;
+      readonly url?: boolean;
+      readonly runtime?: Runtime;
+      readonly architecture?: Architecture;
+      readonly codeDir?: string;
+      readonly handler?: string;
+      readonly include?: string[];
+      readonly exclude?: string[];
+      readonly memorySize?: number;
+      readonly timeout?: number;
+      readonly tracing?: boolean;
+      readonly reservedConcurrency?: number;
+      readonly provisionedConcurrency?: number;
+      readonly variables?: Array<{ [key: string]: string; }>;
+      /**
+       * Create a secret with AWS Secrets Manager and pass them to the Lambda function as environment variables.
+       * The library will create permission for Lambda to access the secret value.
+       * 
+       *   secrets: [
+       *     { key: 'PUBLIC_EXAMPLE', resource: 'your-secret-arn' }
+       *   ]
+       */
+      readonly secrets?: { key: string; resource: string; }[];
+      readonly dockerFile?: string;
+      readonly dockerBuildArgs?: string[];
+      /**
+       * Enable Bun runtime for Lambda. Provide a Bun Lambda Layer ARN.
+       * Provide ARN of the Bun Lambda Layer to use for the function.
+      * See: https://github.com/oven-sh/bun/tree/main/packages/bun-lambda
+       */
+      readonly bunLayerArn?: string;
     }
-
-    /**
-     * Create Parameter Store variables as plaintext and pass them to the Lambda function as environment variables.
-     * The Lambda function will have access to the parameter store variables as environment variables.
-     * Must be in the same region as your stack.
-     * 
-     *   environmentVariables: [
-     *     { key: 'PUBLIC_EXAMPLE', resource: '/path-to/your-parameter' }
-     *   ]
-     */
-    readonly environmentVariables?: { 
-      key: string; 
-      resource: string; 
-    }[];
-   
 
     /**
      * Domains with Route53 and ACM
