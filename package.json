@@ -12,7 +12,7 @@
   "main": "index.ts",
   "repository": {
     "type": "git",
-    "url": "git@github.com:thunder-so/cdk-functions.git"
+    "url": "git+ssh@github.com:thunder-so/cdk-functions.git"
   },
   "author": {
     "name": "CloudBits, Inc.",
