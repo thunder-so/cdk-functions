@@ -1,4 +1,4 @@
-# CDK-Functions
+# CDK Functions
 
 <p>
     <a href="https://github.com/thunder-so/cdk-functions/actions/workflows/publish.yml"><img alt="Build" src="https://img.shields.io/github/actions/workflow/status/thunder-so/cdk-functions/publish.yml?logo=github" /></a>
@@ -34,9 +34,9 @@ Supported frameworks:
 AWS resources:
 
 - Server-side logic with [AWS Lambda](https://aws.amazon.com/lambda/) for dynamic content and API handling
-- Publicly available by a custom domain (or subdomain) via [Route53](https://aws.amazon.com/route53/) and SSL via [Certificate Manager](https://aws.amazon.com/certificate-manager/)
 - [Amazon API Gateway](https://aws.amazon.com/api-gateway/) for creating, deploying, and managing secure APIs at any scale.
-- Environment variables can be securely stored and managed using [AWS Systems Manager Parameter Store](https://aws.amazon.com/systems-manager/features/#Parameter_Store).
+- Publicly available by a custom domain (or subdomain) via [Route53](https://aws.amazon.com/route53/) and SSL via [Certificate Manager](https://aws.amazon.com/certificate-manager/)
+- Environment variables for Lambda can be securely stored and managed using [AWS Secrets Manager](https://aws.amazon.com/secrets-manager/).
 - Build and deploy with [Github Actions](https://docs.github.com/en/actions)
 
 
