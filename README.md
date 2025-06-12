@@ -379,7 +379,6 @@ While both reserved and provisioned concurrency deal with execution limits, they
 CDK-Functions supports deploying your API as a Lambda container image, allowing you to use custom runtimes or package dependencies that exceed the Lambda zip package size limit. This is especially useful for advanced use cases or when using alternative runtimes like Bun.
 
 ## Node.js Runtime Container Image
----
 
 To deploy your function using a Node.js container image:
 
@@ -432,7 +431,6 @@ npx cdk deploy --require-approval never --all --app="npx tsx stack/node.ts"
 ```
 
 ## Bun Runtime Container Image
----
 
 You can also deploy your Lambda using the [Bun](https://bun.sh/) runtime by building a custom container image.
 
