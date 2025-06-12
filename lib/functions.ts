@@ -11,6 +11,8 @@ import { ARecord, AaaaRecord, RecordTarget, HostedZone } from 'aws-cdk-lib/aws-r
 import { Secret } from 'aws-cdk-lib/aws-secretsmanager';
 import { HttpApi, DomainName, EndpointType, SecurityPolicy, HttpMethod } from 'aws-cdk-lib/aws-apigatewayv2';
 import { HttpLambdaIntegration } from 'aws-cdk-lib/aws-apigatewayv2-integrations';
+import { Rule, Schedule, RuleTargetInput } from 'aws-cdk-lib/aws-events';
+import { LambdaFunction } from 'aws-cdk-lib/aws-events-targets';
 import { FunctionProps } from '../stack/FunctionProps';
 
 export class FunctionsConstruct extends Construct {
@@ -106,6 +108,11 @@ export class FunctionsConstruct extends Construct {
       this.createDnsRecords(props);
     }
 
+    // Create a scheduled rule to ping the Lambda function every 5 minutes
+    if (props.functionProps?.keepWarm) {
+      this.createPingRule(props);
+    }
+
     // Output the Lambda function Name
     new CfnOutput(this, 'LambdaFunction', {
       value: this.lambdaFunction.functionName,
@@ -177,6 +184,8 @@ export class FunctionsConstruct extends Construct {
 
   /**
    * Create the Lambda function
+   * 
+   * @private
    */
   private createLambdaFunction(props: FunctionProps): Function {
     // Create the Lambda function
@@ -227,6 +236,8 @@ export class FunctionsConstruct extends Construct {
   /**
    * Add secrets from AWS Secrets Manager to the Lambda function environment.
    * @param secrets Array of objects with { key, resource } where resource is the ARN of the secret.
+   *
+   * @private
    */
   private addSecrets(secrets: Array<{ key: string; resource: string }>): void {
     secrets.forEach(secret => {
@@ -273,6 +284,8 @@ export class FunctionsConstruct extends Construct {
 
   /**
    * Create the API Gateway and custom domain if provided
+   * 
+   * @private
    */
   private createDnsRecords(props: FunctionProps): void {
     // Import hosted zone
@@ -301,6 +314,39 @@ export class FunctionsConstruct extends Construct {
       recordName: props.domain,
       zone: hostedZone,
       target: dnsTarget
+    });
+  }
+
+  /**
+   * Creates a scheduled rule to ping Lambda function every 5 minutes in order to keep it warm
+   * and speed up initial SSR requests.
+   *
+   * @private
+   */
+  private createPingRule(props: FunctionProps): void {
+    const fakeApiGatewayEventData = {
+        "version": "2.0",
+        "routeKey": "GET /{proxy+}",
+        "rawPath": "/",
+        "rawQueryString": "",
+        "headers": {},
+        "requestContext": {
+            "http": {
+                "method": "GET",
+                "path": "/",
+                "protocol": "HTTP/1.1"
+            }
+        }
+    };
+
+    new Rule(this, `PingRule`, {
+        ruleName: `${this.resourceIdPrefix}-pinger`,
+        description: `Pings the Lambda function of the ${this.resourceIdPrefix} app every 5 minutes to keep it warm.`,
+        enabled: true,
+        schedule: Schedule.rate(Duration.minutes(5)),
+        targets: [new LambdaFunction(this.lambdaFunction, {
+            event: RuleTargetInput.fromObject(fakeApiGatewayEventData)
+        })],
     });
   }
 }

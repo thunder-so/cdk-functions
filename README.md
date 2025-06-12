@@ -261,6 +261,7 @@ const fnStackProps: FunctionProps = {
     tracing: true,
     include: ['package.json', 'package-lock.json'],
     exclude: ['**/*.ts', '**/*.map'],
+    keepWarn: true
   },
 
 };
@@ -328,7 +329,11 @@ Lists the file patterns that should be excluded from the Lambda deployment packa
 - **Type**: `string[]`
 - **Usage Example**: `exclude: ['*.test.js', 'README.md']`
 
-
+### `keepWarm`
+Enables an EventBridge rule to invoke the Lambda function every 5 minutes, helping to prevent cold starts by keeping the function warm.
+- **Type**: `boolean`
+- **Default**: `false`
+- **Usage Example**: `keepWarm: true`
 
 # Advanced: Scaling Properties
 
@@ -369,11 +374,11 @@ Provisioned concurrency keeps a set of pre-initialized environments ready to res
 While both reserved and provisioned concurrency deal with execution limits, they serve different purposes. Reserved concurrency guarantees a portion of the total function pool across your AWS account, while provisioned concurrency is specifically about warming up a set number of function instances to achieve low-latency execution.
 
 
-## Deploying with Lambda Container Images
+# Deploying with Lambda Container Images
 
 CDK-Functions supports deploying your API as a Lambda container image, allowing you to use custom runtimes or package dependencies that exceed the Lambda zip package size limit. This is especially useful for advanced use cases or when using alternative runtimes like Bun.
 
-### Node.js Runtime Container Image
+## Node.js Runtime Container Image
 ---
 
 To deploy your function using a Node.js container image:
@@ -426,7 +431,7 @@ new FunctionStack(new App(),
 npx cdk deploy --require-approval never --all --app="npx tsx stack/node.ts"
 ```
 
-### Bun Runtime Container Image
+## Bun Runtime Container Image
 ---
 
 You can also deploy your Lambda using the [Bun](https://bun.sh/) runtime by building a custom container image.
@@ -515,6 +520,6 @@ npx cdk deploy --require-approval never --all --app="bunx tsx stack/bun.ts"
 - The `dockerFile` property in `functionProps` tells CDK-Functions to build and deploy your Lambda using the specified Dockerfile.
 - Use the `include` property to ensure all necessary files (such as your handler, `package.json`, or lockfiles) are available in the Docker build context.
 - You can pass build arguments to your Docker build using the `dockerBuildArgs` property.
-- All other configuration options (environment variables, secrets, concurrency, etc.) are supported as with standard Lambda deployments.
+- All other configuration options (environment variables, secrets, concurrency, lambda warmer, etc.) are supported as with standard Lambda deployments.
 
 For more information, refer to the [CDK documentation on container images](https://docs.aws.amazon.com/lambda/latest/dg/images-create.html).

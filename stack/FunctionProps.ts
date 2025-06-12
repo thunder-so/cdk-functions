@@ -74,6 +74,10 @@ export interface FunctionProps extends StackProps {
       * See: https://github.com/oven-sh/bun/tree/main/packages/bun-lambda
        */
       readonly bunLayerArn?: string;
+      /**
+       * Keep the Lambda warm by invoking it every 5 minutes.
+       */
+      readonly keepWarm?: boolean;
     }
 
     /**
