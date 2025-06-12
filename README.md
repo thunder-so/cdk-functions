@@ -230,8 +230,14 @@ const appStackProps: SPAProps = {
     ],
 
     secrets: [
-      { key: 'API_URL', resource: '/my-app/API_URL' },
-      { key: 'API_KEY', resource: '/my-app/API_KEY' },
+      { 
+        key: 'API_URL', 
+        resource: 'arn:aws:secretsmanager:us-east-1:123456789012:secret:/my-app/API_URL-abc123' 
+      },
+      { 
+        key: 'API_KEY', 
+        resource: 'arn:aws:secretsmanager:us-east-1:123456789012:secret:/my-app/API_KEY-def456' 
+      },
     ],
   }
 };
