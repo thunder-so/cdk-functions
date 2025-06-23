@@ -9,12 +9,19 @@
 
 The easiest way to deploy an API on AWS Lambda with modern web frameworks. 
 
+
+## Features
+
+- Server-side logic with [AWS Lambda](https://aws.amazon.com/lambda/) for dynamic content and API handling
+- [Amazon API Gateway](https://aws.amazon.com/api-gateway/) for creating, deploying, and managing secure APIs at any scale.
+- Publicly available by a custom domain (or subdomain) via [Route53](https://aws.amazon.com/route53/) and SSL via [Certificate Manager](https://aws.amazon.com/certificate-manager/)
+- Environment variables for Lambda can be securely stored and managed using [AWS Secrets Manager](https://aws.amazon.com/secrets-manager/).
+- Build and deploy with [Github Actions](https://docs.github.com/en/actions)
+
 This library supports three ways to deploy your API:
 
 1. Standard Lambda and API Gateway.
-
 2. Node.js runtime container image on Lambda.
-
 3. Bun runtime container image on Lambda.
 
 Supported frameworks:
@@ -31,21 +38,13 @@ Supported frameworks:
 - [Restify](http://restify.com/)
 - Any web application framework
 
-AWS resources:
-
-- Server-side logic with [AWS Lambda](https://aws.amazon.com/lambda/) for dynamic content and API handling
-- [Amazon API Gateway](https://aws.amazon.com/api-gateway/) for creating, deploying, and managing secure APIs at any scale.
-- Publicly available by a custom domain (or subdomain) via [Route53](https://aws.amazon.com/route53/) and SSL via [Certificate Manager](https://aws.amazon.com/certificate-manager/)
-- Environment variables for Lambda can be securely stored and managed using [AWS Secrets Manager](https://aws.amazon.com/secrets-manager/).
-- Build and deploy with [Github Actions](https://docs.github.com/en/actions)
-
 
 ## Prerequisites
 
 You need an [AWS account](https://aws.amazon.com/premiumsupport/knowledge-center/create-and-activate-aws-account/) to create and deploy the required resources for the site on AWS.
 
 Before you begin, make sure you have the following:
-  - Node.js and npm: Ensure you have Node.js (v18 or later) and npm installed.
+  - Node.js and npm: Ensure you have Node.js (v20 or later) and npm installed.
   - AWS CLI: Install and configure the AWS Command Line Interface.
 
   - AWS CDK: Install the AWS CDK globally
@@ -60,6 +59,7 @@ cdk bootstrap aws://your-aws-account-id/us-east-1
 
 This package uses the `npm` package manager and is an ES6+ Module.
 
+
 ## Installation
 
 Navigate to your project directory and install the package and its required dependencies. 
@@ -67,7 +67,7 @@ Navigate to your project directory and install the package and its required depe
 Your `package.json` must also contain `tsx` and this specific version of `aws-cdk-lib`:
 
 ```bash
-npm i tsx aws-cdk-lib@2.150.0 @thunderso/cdk-functions --save-dev
+npm i tsx @thunderso/cdk-functions --save-dev
 ```
 
 
@@ -88,14 +88,14 @@ You should adapt the file to your project's needs.
 > [!NOTE]
 > Use different filenames such as `production.ts` and `dev.ts` for environments.
 
+
 ## Configuration
 
 ```ts
 //stack/index.ts
-import { App } from "aws-cdk-lib";
-import { FunctionStack, type FunctionProps } from '@thunderso/cdk-functions';
+import { Cdk, FunctionStack, type FunctionProps } from '@thunderso/cdk-functions';
 
-const fnStackProps: FunctionProps = {
+const fnProps: FunctionProps = {
 
   // Set your AWS environment
   env: {
@@ -118,13 +118,15 @@ const fnStackProps: FunctionProps = {
 
 };
 
-new FunctionStack(new App(), 
-    `${fnStackProps.application}-${fnStackProps.service}-${fnStackProps.environment}-stack`, 
-    fnStackProps
+new FunctionStack(
+  new Cdk.App(), 
+  `${fnProps.application}-${fnProps.service}-${fnProps.environment}-stack`, 
+  fnProps
 );
 ```
 
-## Deploy
+
+# Deploy
 
 By running the following script, the CDK stack will be deployed to AWS.
 
@@ -132,16 +134,8 @@ By running the following script, the CDK stack will be deployed to AWS.
 npx cdk deploy --require-approval never --all --app="npx tsx stack/index.ts" 
 ```
 
-## Destroy the Stack
 
-If you want to destroy the stack and all its resources (including storage, e.g., access logs), run the following script:
-
-```bash
-npx cdk destroy --require-approval never --all --app="npx tsx stack/index.ts" 
-```
-
-
-# Deploy using GitHub Actions
+## Deploy using GitHub Actions
 
 In your GitHub repository, add a new workflow file under `.github/workflows/deploy.yml` with the following content:
 
@@ -178,6 +172,15 @@ jobs:
 Add `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` as repository secrets in GitHub. These should be the access key and secret for an IAM user with permissions to deploy your stack.
 
 
+## Destroy the Stack
+
+If you want to destroy the stack and all its resources (including storage, e.g., access logs), run the following script:
+
+```bash
+npx cdk destroy --require-approval never --all --app="npx tsx stack/index.ts" 
+```
+
+
 # Manage Domain with Route53
 
 1. [Create a hosted zone in Route53](https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/AboutHZWorkingWith.html) for the desired domain, if you don't have one yet.
@@ -193,7 +196,7 @@ Add `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` as repository secrets in Git
 
 ```ts
 // stack/index.ts
-const fnStackProps: FunctionProps = {
+const fnProps: FunctionProps = {
   // ... other props
 
   domain: 'api.example.com',
@@ -202,46 +205,6 @@ const fnStackProps: FunctionProps = {
 };
 ```
 
-# Using environment variables
-
-Pass environment variables to your lambda function by:
-
-1. Variables: string key and value pair.
-
-2. Secrets stored in SSM Secrets Manager as secure string. The library automatically adds the necessary permissions to the Lambda function's role to read parameters from SSM .
-
-To create a plaintext secret in AWS Secrets Manager using the AWS CLI:
-
-```bash
-aws secretsmanager create-secret --name "your-secret-name" --secret-string "your-secret-value"
-```
-
-```ts
-// stack/index.ts
-const appStackProps: SPAProps = {
-  // ... other props
-
-  functionProps: {
-    // ... other props
-
-    variables: [
-      { VITE_API_URL: 'https://api.example.com' },
-      { VITE_ANALYTICS_ID: 'UA-XXXXXX' }
-    ],
-
-    secrets: [
-      { 
-        key: 'API_URL', 
-        resource: 'arn:aws:secretsmanager:us-east-1:123456789012:secret:/my-app/API_URL-abc123' 
-      },
-      { 
-        key: 'API_KEY', 
-        resource: 'arn:aws:secretsmanager:us-east-1:123456789012:secret:/my-app/API_KEY-def456' 
-      },
-    ],
-  }
-};
-```
 
 # Configure the Lambda
 
@@ -249,11 +212,10 @@ Each configuration property provides a means to fine-tune your function’s perf
 
 ```ts
 // stack/index.ts
-import { App } from "aws-cdk-lib";
 import { Runtime, Architecture } from 'aws-cdk-lib/aws-lambda';
-import { FunctionStack, type FunctionProps } from '@thunderso/cdk-functions';
+import { Cdk, FunctionStack, type FunctionProps } from '@thunderso/cdk-functions';
 
-const fnStackProps: FunctionProps = {
+const fnProps: FunctionProps = {
   // ... other props
   
   functionProps: {
@@ -267,14 +229,15 @@ const fnStackProps: FunctionProps = {
     tracing: true,
     include: ['package.json', 'package-lock.json'],
     exclude: ['**/*.ts', '**/*.map'],
-    keepWarn: true
+    keepWarm: true
   },
 
 };
 
-new FunctionStack(new App(), 
-    `${fnStackProps.application}-${fnStackProps.service}-${fnStackProps.environment}-stack`, 
-    fnStackProps
+new FunctionStack(
+  new Cdk.App(), 
+  `${fnProps.application}-${fnProps.service}-${fnProps.environment}-stack`, 
+  fnProps
 );
 ```
 
@@ -341,16 +304,56 @@ Enables an EventBridge rule to invoke the Lambda function every 5 minutes, helpi
 - **Default**: `false`
 - **Usage Example**: `keepWarm: true`
 
+
+## Using environment variables
+
+Pass environment variables to your lambda function by:
+
+1. `variables`: Array of key-value pairs for plain environment variables.
+
+2. `secrets`: Array of objects with `key` and `resource` (Secrets Manager ARN). The library automatically adds permissions for Lambda to read these secrets.
+
+To create a plaintext secret in AWS Secrets Manager using the AWS CLI:
+
+```bash
+aws secretsmanager create-secret --name "your-secret-name" --secret-string "your-secret-value"
+```
+
+```ts
+// stack/index.ts
+const fnProps: FunctionProps = {
+  // ... other props
+
+  functionProps: {
+    // ... other props
+
+    variables: [
+      { VITE_API_URL: 'https://api.example.com' },
+      { VITE_ANALYTICS_ID: 'UA-XXXXXX' }
+    ],
+
+    secrets: [
+      { 
+        key: 'API_URL', 
+        resource: 'arn:aws:secretsmanager:us-east-1:123456789012:secret:/my-app/API_URL-abc123' 
+      },
+      { 
+        key: 'API_KEY', 
+        resource: 'arn:aws:secretsmanager:us-east-1:123456789012:secret:/my-app/API_KEY-def456' 
+      },
+    ],
+  }
+};
+```
+
+
 # Advanced: Scaling Properties
 
 When configuring AWS Lambda functions, understanding scaling properties is essential for efficient resource management and cost optimization. The two primary scaling properties you can configure are `reservedConcurrency` and `provisionedConcurrency`.
 
 ```ts
 // stack/index.ts
-import { App } from "aws-cdk-lib";
-import { FunctionStack, type FunctionProps } from '@thunderso/cdk-functions';
-
-const fnStackProps: FunctionProps = {
+const fnProps: FunctionProps = {
   // ... other props
   
   functionProps: {
@@ -360,11 +363,6 @@ const fnStackProps: FunctionProps = {
   },
 
 };
-
-new FunctionStack(new App(), 
-    `${fnStackProps.application}-${fnStackProps.service}-${fnStackProps.environment}-stack`, 
-    fnStackProps
-);
 ```
 
 ### `reservedConcurrency`
@@ -391,7 +389,7 @@ To deploy your function using a Node.js container image:
 1. **Create a Dockerfile** (e.g., `Dockerfile.node`) in your project root:
 
 ```dockerfile title="Dockerfile.node"
-FROM public.ecr.aws/lambda/nodejs:22 AS base
+FROM public.ecr.aws/lambda/nodejs:20 AS base
 WORKDIR ${LAMBDA_TASK_ROOT}
 
 # Copy your build output and install dependencies
@@ -410,10 +408,9 @@ Depending on your framework, there may not be an `index.js` file in your build o
 
 ```ts
 // stack/node.ts
-import { App } from "aws-cdk-lib";
-import { FunctionStack, type FunctionProps } from '@thunderso/cdk-functions';
+import { Cdk, FunctionStack, type FunctionProps } from '@thunderso/cdk-functions';
 
-const fnStackProps: FunctionProps = {
+const fnProps: FunctionProps = {
   // ... other props ...
   functionProps: {
     codeDir: 'dist',
@@ -424,9 +421,10 @@ const fnStackProps: FunctionProps = {
   },
 };
 
-new FunctionStack(new App(), 
-    `${fnStackProps.application}-${fnStackProps.service}-${fnStackProps.environment}-stack`, 
-    fnStackProps
+new FunctionStack(
+  new Cdk.App(), 
+  `${fnProps.application}-${fnProps.service}-${fnProps.environment}-stack`, 
+  fnProps
 );
 ```
 
@@ -491,10 +489,9 @@ exports.fetch = handler;
 
 ```ts
 // stack/bun.ts
-import { App } from "aws-cdk-lib";
-import { FunctionStack, type FunctionProps } from '@thunderso/cdk-functions';
+import { Cdk, FunctionStack, type FunctionProps } from '@thunderso/cdk-functions';
 
-const fnStackProps: FunctionProps = {
+const fnProps: FunctionProps = {
   // ... other props ...
   functionProps: {
     codeDir: 'dist',
@@ -507,9 +504,10 @@ const fnStackProps: FunctionProps = {
   },
 };
 
-new FunctionStack(new App(), 
-    `${fnStackProps.application}-${fnStackProps.service}-${fnStackProps.environment}-stack`, 
-    fnStackProps
+new FunctionStack(
+  new Cdk.App(), 
+  `${fnProps.application}-${fnProps.service}-${fnProps.environment}-stack`, 
+  fnProps
 );
 ```
 
