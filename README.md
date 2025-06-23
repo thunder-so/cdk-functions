@@ -131,7 +131,7 @@ new FunctionStack(
 By running the following script, the CDK stack will be deployed to AWS.
 
 ```bash
-npx cdk deploy --require-approval never --all --app="npx tsx stack/index.ts" 
+npx cdk deploy --all --app="npx tsx stack/index.ts" 
 ```
 
 
@@ -177,7 +177,7 @@ Add `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` as repository secrets in Git
 If you want to destroy the stack and all its resources (including storage, e.g., access logs), run the following script:
 
 ```bash
-npx cdk destroy --require-approval never --all --app="npx tsx stack/index.ts" 
+npx cdk destroy --all --app="npx tsx stack/index.ts" 
 ```
 
 
@@ -431,7 +431,7 @@ new FunctionStack(
 3. **Deploy** as usual:
 
 ```bash
-npx cdk deploy --require-approval never --all --app="npx tsx stack/node.ts"
+npx cdk deploy --all --app="npx tsx stack/node.ts"
 ```
 
 ## Bun Runtime Container Image
@@ -514,7 +514,7 @@ new FunctionStack(
 3. **Deploy** as usual:
 
 ```bash
-npx cdk deploy --require-approval never --all --app="bunx tsx stack/bun.ts"
+npx cdk deploy --all --app="bunx tsx stack/bun.ts"
 ```
 
 ### Notes on Container Lambda Deployments
