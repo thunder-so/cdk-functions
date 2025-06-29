@@ -3,6 +3,7 @@ import fs from 'fs';
 import fse from 'fs-extra/esm';
 import path from 'path';
 import { Aws, Duration, CfnOutput } from 'aws-cdk-lib';
+import { Effect, PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import { Construct } from 'constructs';
 import { Function, FunctionUrl, Runtime, Code, Alias, Architecture, Tracing, FunctionUrlAuthType, DockerImageCode, DockerImageFunction, LayerVersion } from 'aws-cdk-lib/aws-lambda';
 import { RetentionDays } from 'aws-cdk-lib/aws-logs';
@@ -38,11 +39,6 @@ export class FunctionsConstruct extends Construct {
 
     this.rootDir = sanitizePath(props?.rootDir);
     this.codeDir = sanitizePath(props.functionProps?.codeDir);
-
-    // Include the specified files and directories to output directory
-    if (props.functionProps?.include && props.functionProps?.include.length > 0) {
-      this.includeFilesAndDirectories(props.functionProps?.include);
-    }
 
     // If Dockerfile is specified, use it to build the Lambda container function
     // Otherwise, use the default Lambda function
@@ -147,14 +143,14 @@ export class FunctionsConstruct extends Construct {
   private createContainerLambdaFunction(props: FunctionProps): Function {
 
     // Include the Dockerfile to the .output/server directory
-    this.includeFilesAndDirectories([props.functionProps?.dockerFile as string]);
+    // this.includeFilesAndDirectories([props.functionProps?.dockerFile as string]);
 
     // Create the Lambda function using the Docker image
     const lambdaFunction = new DockerImageFunction(this, "ContainerFunction", {
       functionName: `${this.resourceIdPrefix}-container-function`,
       description: `Renders the ${this.resourceIdPrefix} app.`,
       architecture: props.functionProps?.architecture || Architecture.ARM_64,
-      code: DockerImageCode.fromImageAsset(this.codeDir, {
+      code: DockerImageCode.fromImageAsset(this.rootDir, {
         buildArgs: {
           NODE_ENV: props.environment,
           ...(Object.fromEntries(
@@ -179,6 +175,34 @@ export class FunctionsConstruct extends Construct {
       reservedConcurrentExecutions: props.functionProps?.reservedConcurrency,
     });
 
+    // Add ECR permissions to the Lambda execution role
+    // This ensures Lambda can pull images from ECR repositories
+    if (props?.accessTokenSecretArn) {
+      lambdaFunction.addToRolePolicy(
+        new PolicyStatement({
+          effect: Effect.ALLOW,
+          actions: [
+            "ecr:GetAuthorizationToken",
+          ],
+          resources: ["*"], // GetAuthorizationToken requires * resource
+        })
+      );
+
+      lambdaFunction.addToRolePolicy(
+        new PolicyStatement({
+          effect: Effect.ALLOW,
+          actions: [
+            "ecr:BatchCheckLayerAvailability",
+            "ecr:GetDownloadUrlForLayer", 
+            "ecr:BatchGetImage",
+            "ecr:DescribeImages",
+            "ecr:DescribeRepositories",
+          ],
+          resources: ["*"], // Allow access to any ECR repository for flexibility
+        })
+      );
+    }
+
     return lambdaFunction; 
   }
 
@@ -188,8 +212,13 @@ export class FunctionsConstruct extends Construct {
    * @private
    */
   private createLambdaFunction(props: FunctionProps): Function {
+    // Include the specified files and directories to output directory
+    if (props.functionProps?.include && props.functionProps?.include.length > 0) {
+      this.includeFilesAndDirectories(props.functionProps?.include);
+    }
+
     // Create the Lambda function
-    const codeDirectory = `${this.rootDir || '.'}/${this.codeDir || ''}`;
+    const codeDirectory = path.join(this.rootDir || '.', this.codeDir || '');
 
     const lambdaFunction = new Function(this, 'Function', {
       functionName: `${this.resourceIdPrefix}-function`,

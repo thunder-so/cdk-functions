@@ -1,1 +1,2 @@
-export { FunctionsConstruct, type FunctionsProps } from "./functions";
+export { FunctionsConstruct } from "./functions";
+export { PipelineConstruct } from "./pipeline";
