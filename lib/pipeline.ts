@@ -2,7 +2,7 @@ import { Construct } from "constructs";
 import { Duration, SecretValue, RemovalPolicy, CfnOutput, DockerImage } from "aws-cdk-lib";
 import { Pipeline, Artifact, PipelineType } from "aws-cdk-lib/aws-codepipeline";
 import { GitHubSourceAction, GitHubTrigger, CodeBuildAction, LambdaInvokeAction } from "aws-cdk-lib/aws-codepipeline-actions";
-import { PipelineProject,LinuxArmBuildImage, LinuxBuildImage, ComputeType, BuildSpec, BuildEnvironmentVariable, BuildEnvironmentVariableType } from "aws-cdk-lib/aws-codebuild";
+import { PipelineProject, LinuxArmBuildImage, LinuxBuildImage, ComputeType, BuildSpec, BuildEnvironmentVariable, BuildEnvironmentVariableType } from "aws-cdk-lib/aws-codebuild";
 import { Bucket, type IBucket, BlockPublicAccess, ObjectOwnership, BucketEncryption } from "aws-cdk-lib/aws-s3";
 import { PolicyStatement, Effect, ServicePrincipal } from "aws-cdk-lib/aws-iam";
 import { Function as LambdaFunction } from "aws-cdk-lib/aws-lambda";

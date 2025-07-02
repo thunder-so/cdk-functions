@@ -37,8 +37,7 @@ export interface PipelineProps {
   readonly buildSpecFilePath?: string;
 
   /**
-   * Optional. Thunder platform features. 
-   * - You can use the stack safely without using these props.
+   * The ARN of the Event Bus.
    * - The pipeline events are broadcast to an event bus. Defaults to null.
    */
   readonly eventTarget?: string;

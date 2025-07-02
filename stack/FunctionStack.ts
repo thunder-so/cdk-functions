@@ -1,6 +1,6 @@
 import { Stack } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
-import { FunctionsConstruct, PipelineConstruct } from '../lib';
+import { FunctionsConstruct, PipelineConstruct, EventsConstruct } from '../lib';
 import type { FunctionProps } from './FunctionProps'; 
 
 export class FunctionStack extends Stack {
@@ -32,10 +32,18 @@ export class FunctionStack extends Stack {
         throw new Error('Missing buildProps: runtime, runtime_version, installcmd, buildcmd and outputdir required when pipeline is enabled.');
       }
 
-      new PipelineConstruct(this, 'Pipeline', {
+      const pipeline = new PipelineConstruct(this, 'Pipeline', {
         ...props,
         lambdaFunction: fn.lambdaFunction
       });
+
+      // Pipeline events
+      if (props.eventTarget) {
+        new EventsConstruct(this, 'PipelineEvents', {
+          ...props,
+          codePipeline: pipeline.codePipeline,
+        });
+      }
     }; // end if
 
   }
