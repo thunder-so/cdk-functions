@@ -142,9 +142,6 @@ export class FunctionsConstruct extends Construct {
    */
   private createContainerLambdaFunction(props: FunctionProps): Function {
 
-    // Include the Dockerfile to the .output/server directory
-    // this.includeFilesAndDirectories([props.functionProps?.dockerFile as string]);
-
     // Create the Lambda function using the Docker image
     const lambdaFunction = new DockerImageFunction(this, "ContainerFunction", {
       functionName: `${this.resourceIdPrefix}-container-function`,
