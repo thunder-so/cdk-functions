@@ -36,10 +36,10 @@ export class PipelineConstruct extends Construct {
   
 
     // Output pipeline name
-    new CfnOutput(this, "LambdaPipelineName", {
+    new CfnOutput(this, "CodePipelineName", {
       value: this.codePipeline.pipelineName,
       description: "The name of the Lambda deployment pipeline",
-      exportName: `${this.resourceIdPrefix}-LambdaPipelineName`,
+      exportName: `${this.resourceIdPrefix}-CodePipelineName`,
     });
   }
 
@@ -228,7 +228,7 @@ export class PipelineConstruct extends Construct {
 
     // Build Action
     const dockerBuildAction = new CodeBuildAction({
-      actionName: "BuildAndPushDockerImage",
+      actionName: "BuildAction",
       project: dockerBuildProject,
       input: sourceOutput,
       outputs: [dockerBuildOutput],
@@ -236,7 +236,7 @@ export class PipelineConstruct extends Construct {
 
     // Deploy Action
     const deployAction = new CodeBuildAction({
-      actionName: "DeployDockerImage",
+      actionName: "DeployAction",
       project: deployProject,
       input: dockerBuildOutput,
       runOrder: 2,
@@ -253,7 +253,7 @@ export class PipelineConstruct extends Construct {
           actions: [sourceAction],
         },
         {
-          stageName: "BuildAndPush",
+          stageName: "Build",
           actions: [dockerBuildAction],
         },
         {
@@ -383,7 +383,7 @@ export class PipelineConstruct extends Construct {
 
     // Build Action
     const buildAction = new CodeBuildAction({
-      actionName: "BuildLambdaAction",
+      actionName: "BuildAction",
       project: this.codeBuildProject,
       input: sourceOutput,
       outputs: [buildOutput],
@@ -423,7 +423,7 @@ export class PipelineConstruct extends Construct {
 
     // Deploy Action
     const deployAction = new CodeBuildAction({
-      actionName: "DeployLambdaAction",
+      actionName: "DeployAction",
       project: deployProject,
       input: buildOutput,
       runOrder: 2,
