@@ -18,18 +18,13 @@ export class FunctionStack extends Stack {
     const fn = new FunctionsConstruct(this, 'Functions', props);
 
     /**
-     * Pipeline enabled and GitHub access token provided
+     * GitHub access token provided, enable pipeline
      * 
      */ 
     if (props?.accessTokenSecretArn) {
       // check for sourceProps
       if (!props.sourceProps?.owner || !props.sourceProps?.repo || !props.sourceProps?.branchOrRef) {
         throw new Error('Missing sourceProps: Github owner, repo and branch/ref required.');
-      }
-
-      // check for buildProps
-      if (!props.buildProps?.runtime || !props.buildProps?.runtime_version || !props.buildProps?.installcmd || !props.buildProps?.buildcmd) {
-        throw new Error('Missing buildProps: runtime, runtime_version, installcmd, buildcmd and outputdir required when pipeline is enabled.');
       }
 
       const pipeline = new PipelineConstruct(this, 'Pipeline', {
