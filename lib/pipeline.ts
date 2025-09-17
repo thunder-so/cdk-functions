@@ -11,6 +11,7 @@ import { Repository } from "aws-cdk-lib/aws-ecr";
 import type { FunctionProps } from "../stack/FunctionProps";
 
 export interface LambdaPipelineProps extends FunctionProps {
+  repository: Repository;
   lambdaFunction: LambdaFunction;
 }
 
@@ -75,15 +76,8 @@ export class PipelineConstruct extends Construct {
       trigger: GitHubTrigger.WEBHOOK,
     });
 
-    // ECR repository for Lambda image (must exist and Lambda must use it)
-    const ecr = new Repository(this, "LambdaRepo", {
-      repositoryName: `${this.resourceIdPrefix}-repo`,
-      removalPolicy: RemovalPolicy.DESTROY,
-      emptyOnDelete: true,
-    });
-
     // Add this policy to the ECR repository
-    ecr.addToResourcePolicy(
+    props.repository.addToResourcePolicy(
       new PolicyStatement({
         effect: Effect.ALLOW,
         principals: [new ServicePrincipal("lambda.amazonaws.com")],
@@ -95,7 +89,7 @@ export class PipelineConstruct extends Construct {
     );
 
     // Grant the Lambda function the right to pull images from ECR (all necessary permissions)
-    ecr.grantPull(props.lambdaFunction);
+    props.repository.grantPull(props.lambdaFunction);
 
     // Build & Push Docker image to ECR
     const dockerBuildProject = new PipelineProject(this, "DockerBuildProject", {
@@ -135,7 +129,7 @@ export class PipelineConstruct extends Construct {
         privileged: true,
       },
       environmentVariables: {
-        ECR_REPO: { value: ecr.repositoryUri },
+        ECR_REPO: { value: props.repository.repositoryUri },
         ...(props.buildProps?.environment
           ? Object.entries(Object.assign({}, ...(props.buildProps.environment))).reduce(
               (acc, [key, value]) => ({ ...acc, [key]: { value, type: BuildEnvironmentVariableType.PLAINTEXT } }),
@@ -155,7 +149,7 @@ export class PipelineConstruct extends Construct {
     });
 
     // Permissions for CodeBuild to push to ECR
-    ecr.grantPullPush(dockerBuildProject);
+    props.repository.grantPullPush(dockerBuildProject);
 
     // Deploy Action: Update Lambda function with new image
     const deployProject = new PipelineProject(this, "DockerDeployProject", {
@@ -222,7 +216,7 @@ export class PipelineConstruct extends Construct {
           "ecr:DescribeImages",
           "ecr:DescribeRepositories",
         ],
-        resources: [ecr.repositoryArn],
+        resources: [props.repository.repositoryArn],
       })
     );
 

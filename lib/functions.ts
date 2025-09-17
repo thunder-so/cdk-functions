@@ -6,7 +6,7 @@ import { fileURLToPath } from 'url';
 import { Aws, Duration, CfnOutput } from 'aws-cdk-lib';
 import { Effect, PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import { Construct } from 'constructs';
-import { Function, FunctionUrl, Runtime, Code, Alias, Architecture, Tracing, FunctionUrlAuthType, DockerImageCode, DockerImageFunction, LayerVersion } from 'aws-cdk-lib/aws-lambda';
+import { Function, FunctionUrl, Runtime, Code, Alias, Architecture, Tracing, FunctionUrlAuthType, DockerImageCode, DockerImageFunction, LayerVersion, InlineCode } from 'aws-cdk-lib/aws-lambda';
 import { Repository } from 'aws-cdk-lib/aws-ecr';
 import { RetentionDays } from 'aws-cdk-lib/aws-logs';
 import { Certificate } from 'aws-cdk-lib/aws-certificatemanager';
@@ -16,7 +16,11 @@ import { HttpApi, DomainName, EndpointType, SecurityPolicy, HttpMethod } from 'a
 import { HttpLambdaIntegration } from 'aws-cdk-lib/aws-apigatewayv2-integrations';
 import { Rule, Schedule, RuleTargetInput } from 'aws-cdk-lib/aws-events';
 import { LambdaFunction } from 'aws-cdk-lib/aws-events-targets';
-import { FunctionProps } from '../stack/FunctionProps';
+import { FunctionProps as FnProps } from '../stack/FunctionProps';
+
+export interface FunctionProps extends FnProps {
+  repository: Repository;
+}
 
 export class FunctionsConstruct extends Construct {
   private readonly resourceIdPrefix: string;
@@ -136,32 +140,6 @@ export class FunctionsConstruct extends Construct {
   }
 
   /**
-   * Create a placeholder Docker image for pipeline deployment
-   * @private
-   */
-  private createPlaceholderImage(): DockerImageCode {
-    const __filename = fileURLToPath(import.meta.url);
-    const __dirname = path.dirname(__filename);
-    const placeholderDir = path.join(__dirname, '../placeholder');
-    
-    // Ensure placeholder directory exists
-    if (!fs.existsSync(placeholderDir)) {
-      fs.mkdirSync(placeholderDir, { recursive: true });
-    }
-    
-    // Create minimal Dockerfile
-    const dockerfile = `FROM public.ecr.aws/lambda/nodejs:22
-CMD ["index.handler"]`;
-    fs.writeFileSync(path.join(placeholderDir, 'Dockerfile'), dockerfile);
-    
-    // Create minimal index.js
-    const indexJs = `exports.handler = async (event) => ({ statusCode: 200, body: 'This is a placeholder until your deployment is complete.' });`;
-    fs.writeFileSync(path.join(placeholderDir, 'index.js'), indexJs);
-    
-    return DockerImageCode.fromImageAsset(placeholderDir);
-  }
-
-  /**
    * Create the container lambda function to render the app.
    * * @param {NuxtProps} props - The properties for the app.
    * * @returns {Function} The Lambda function. 
@@ -169,26 +147,23 @@ CMD ["index.handler"]`;
    * @private
    */
   private createContainerLambdaFunction(props: FunctionProps): Function {
-    // Use placeholder image when pipeline is enabled (accessTokenSecretArn provided)
-    const code = props.accessTokenSecretArn 
-      ? this.createPlaceholderImage()
-      : DockerImageCode.fromImageAsset(this.rootDir, {
-          buildArgs: {
-            NODE_ENV: props.environment,
-            ...(Object.fromEntries(
-              Object.entries(props.functionProps?.dockerBuildArgs || {}).map(([key, value]) => [key, String(value)])
-            )),
-          },
-          file: props.functionProps?.dockerFile,
-          exclude: props.functionProps?.exclude || [],
-        });
-
+    const imageAsset = DockerImageCode.fromImageAsset(this.rootDir, {
+      buildArgs: {
+        NODE_ENV: props.environment,
+        ...(Object.fromEntries(
+          Object.entries(props.functionProps?.dockerBuildArgs || {}).map(([key, value]) => [key, String(value)])
+        )),
+      },
+      file: props.functionProps?.dockerFile ? path.join(this.rootDir, props.functionProps.dockerFile) : undefined,
+      exclude: props.functionProps?.exclude || [],
+    });
+    
     // Create the Lambda function using the Docker image
     const lambdaFunction = new DockerImageFunction(this, "ContainerFunction", {
       functionName: `${this.resourceIdPrefix}-container-function`,
       description: `Renders the ${this.resourceIdPrefix} app.`,
       architecture: props.functionProps?.architecture || Architecture.ARM_64,
-      code,
+      code: imageAsset,
       timeout: props.functionProps?.timeout 
         ? Duration.seconds(props.functionProps.timeout) 
         : Duration.seconds(10),

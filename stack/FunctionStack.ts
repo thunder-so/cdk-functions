@@ -1,4 +1,5 @@
-import { Stack } from 'aws-cdk-lib';
+import { Stack, RemovalPolicy } from 'aws-cdk-lib';
+import { Repository } from 'aws-cdk-lib/aws-ecr';
 import { Construct } from 'constructs';
 import { FunctionsConstruct, PipelineConstruct, EventsConstruct } from '../lib';
 import type { FunctionProps } from './FunctionProps'; 
@@ -15,7 +16,19 @@ export class FunctionStack extends Stack {
       throw new Error('Mandatory stack properties missing.');
     }
 
-    const fn = new FunctionsConstruct(this, 'Functions', props);
+    const resourceIdPrefix = `${props.application}-${props.service}-${props.environment}`.substring(0, 42);
+
+    // ECR repository
+    const ecr = new Repository(this, "Repository", {
+      repositoryName: `${resourceIdPrefix}-repository`,
+      removalPolicy: RemovalPolicy.DESTROY,
+      emptyOnDelete: true,
+    });
+
+    const fn = new FunctionsConstruct(this, 'Functions', {
+      ...props,
+      repository: ecr
+    });
 
     /**
      * GitHub access token provided, enable pipeline
@@ -29,6 +42,7 @@ export class FunctionStack extends Stack {
 
       const pipeline = new PipelineConstruct(this, 'Pipeline', {
         ...props,
+        repository: ecr,
         lambdaFunction: fn.lambdaFunction
       });
 
