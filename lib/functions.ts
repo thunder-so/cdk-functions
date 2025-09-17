@@ -154,7 +154,7 @@ export class FunctionsConstruct extends Construct {
           Object.entries(props.functionProps?.dockerBuildArgs || {}).map(([key, value]) => [key, String(value)])
         )),
       },
-      file: props.functionProps?.dockerFile ? path.join(this.rootDir, props.functionProps.dockerFile) : undefined,
+      file: props.functionProps?.dockerFile,
       exclude: props.functionProps?.exclude || [],
     });
     
