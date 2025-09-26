@@ -2,6 +2,7 @@
 *.d.ts
 node_modules
 bun.lockb
+code
 
 # CDK asset staging directory
 .cdk.staging
@@ -140,3 +141,4 @@ dist
 
 # vscode
 .vscode
+code
