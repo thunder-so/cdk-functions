@@ -23,7 +23,7 @@ export class PipelineConstruct extends Construct {
   constructor(scope: Construct, id: string, props: LambdaPipelineProps) {
     super(scope, id);
 
-    this.resourceIdPrefix = `${props.application}-${props.service}-${props.environment}`.substring(0, 42);
+    this.resourceIdPrefix = `${props.application.substring(0, 7)}-${props.service.substring(0, 7)}-${props.environment.substring(0, 7)}`.substring(0, 23).toLowerCase();
     
     const isContainerBuild = props.buildProps?.buildSystem === 'Nixpacks' || 
                             props.buildProps?.buildSystem === 'Custom Dockerfile' ||

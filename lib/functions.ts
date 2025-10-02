@@ -36,7 +36,7 @@ export class FunctionsConstruct extends Construct {
     super(scope, id);
 
     // Set the resource prefix
-    this.resourceIdPrefix = `${props.application}-${props.service}-${props.environment}`.substring(0, 42);
+    this.resourceIdPrefix = `${props.application.substring(0, 7)}-${props.service.substring(0, 7)}-${props.environment.substring(0, 7)}`.substring(0, 23).toLowerCase();
 
     // Sanitize paths to remove leading and trailing slashes
     const sanitizePath = (path: string | undefined): string => {

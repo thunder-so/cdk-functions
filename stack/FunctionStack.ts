@@ -16,7 +16,7 @@ export class FunctionStack extends Stack {
       throw new Error('Mandatory stack properties missing.');
     }
 
-    const resourceIdPrefix = `${props.application}-${props.service}-${props.environment}`.substring(0, 42);
+    const resourceIdPrefix = `${props.application.substring(0, 7)}-${props.service.substring(0, 7)}-${props.environment.substring(0, 7)}`.substring(0, 23).toLowerCase();
 
     // ECR repository
     const ecr = new Repository(this, "Repository", {
