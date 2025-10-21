@@ -25,9 +25,8 @@ export class PipelineConstruct extends Construct {
 
     this.resourceIdPrefix = `${props.application.substring(0, 7)}-${props.service.substring(0, 7)}-${props.environment.substring(0, 7)}`.substring(0, 23).toLowerCase();
     
-    const isContainerBuild = props.buildProps?.buildSystem === 'Nixpacks' || 
-                            props.buildProps?.buildSystem === 'Custom Dockerfile' ||
-                            props.functionProps?.dockerFile;
+  // Container build is enabled when a Dockerfile path is provided on the function props
+  const isContainerBuild = !!props.functionProps?.dockerFile;
     
     if (isContainerBuild) {
       // create container pipeline (handles both Custom Dockerfile and Nixpacks)
@@ -48,27 +47,6 @@ export class PipelineConstruct extends Construct {
     });
   }
 
-  /**
-   * Generate Nixpacks build commands for CodeBuild
-   * @param props Pipeline properties
-   * @returns Array of build commands
-   * 
-   * @private
-   */
-  private generateNixpacksBuildCommands(props: LambdaPipelineProps): string[] {
-    const buildProps = props.buildProps;
-    
-    return [
-      // Install Nixpacks
-      "curl -sSL https://nixpacks.com/install.sh | bash",
-      
-      // Generate Dockerfile using Nixpacks
-      `nixpacks build --out . . ${buildProps?.installcmd ? `--install-cmd "${buildProps.installcmd}"` : ''} ${buildProps?.buildcmd ? `--build-cmd "${buildProps.buildcmd}"` : ''} ${buildProps?.startcmd ? `--start-cmd "${buildProps.startcmd}"` : ''} > Dockerfile.nixpacks`,
-      'ls -a',
-      // Build Docker image using generated Dockerfile
-      `docker build -t $ECR_REPO:$IMAGE_TAG -f .nixpacks/Dockerfile .`
-    ];
-  }
 
   /**
    * Create a CodePipeline for Docker-based Lambda deployment.
@@ -132,10 +110,7 @@ export class PipelineConstruct extends Construct {
           },
           build: {
             commands: [
-              ...(props.buildProps?.buildSystem === 'Nixpacks' 
-                ? this.generateNixpacksBuildCommands(props)
-                : [`docker build -t $ECR_REPO:$IMAGE_TAG -f ${props.functionProps!.dockerFile} .`]
-              ),
+              `docker build -t $ECR_REPO:$IMAGE_TAG -f ${props.functionProps!.dockerFile} .`,
               "docker push $ECR_REPO:$IMAGE_TAG",
             ],
           },

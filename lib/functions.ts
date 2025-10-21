@@ -47,10 +47,8 @@ export class FunctionsConstruct extends Construct {
     this.rootDir = sanitizePath(props?.rootDir);
     this.codeDir = sanitizePath(props.functionProps?.codeDir);
 
-    // Determine Lambda function type based on buildSystem or dockerFile
-    const isContainerLambda = props.buildProps?.buildSystem === 'Nixpacks' || 
-                              props.buildProps?.buildSystem === 'Custom Dockerfile' ||
-                              props.functionProps?.dockerFile;
+  // Determine Lambda function type based on whether a Dockerfile path was provided
+  const isContainerLambda = !!props.functionProps?.dockerFile;
     
     this.lambdaFunction = isContainerLambda
       ? this.createContainerLambdaFunction(props)
@@ -127,32 +125,6 @@ export class FunctionsConstruct extends Construct {
     });
   }
 
-  /**
-   * Generate Dockerfile using Nixpacks CLI
-   * @param props Function properties containing Nixpacks configuration
-   * @returns Path to generated Dockerfile
-   * 
-   * @private
-   */
-  private generateDockerfile(props: FunctionProps): void {
-    const buildProps = props.buildProps;
-    
-    const installCmd = buildProps?.installcmd ? `--install-cmd "${buildProps.installcmd}"` : '';
-    const buildCmd = buildProps?.buildcmd ? `--build-cmd "${buildProps.buildcmd}"` : '';
-    const startCmd = buildProps?.startcmd ? `--start-cmd "${buildProps.startcmd}"` : '';
-    
-    // Resolve source directory path
-    const sourceDir = this.rootDir ? path.resolve(this.rootDir) : process.cwd();
-    
-    // Verify source directory exists
-    if (!fs.existsSync(sourceDir)) {
-      throw new Error(`Source directory does not exist: ${sourceDir}`);
-    }
-    
-    // Generate Dockerfile using Nixpacks (output to source directory)
-    const dockerfileCmd = `nixpacks build --out "${sourceDir}" "${sourceDir}" ${installCmd} ${buildCmd} ${startCmd}`.trim();
-    execSync(dockerfileCmd, { cwd: process.cwd(), encoding: 'utf8' });
-  }
 
   /**
    * Include the specified files and directories in the Lambda function code.
@@ -184,34 +156,22 @@ export class FunctionsConstruct extends Construct {
     let imageAsset;
     const sourceDir = this.rootDir ? path.resolve(this.rootDir) : process.cwd();
 
-    if (props.buildProps?.buildSystem === 'Nixpacks') {
-      // Generate Dockerfile using Nixpacks
-      this.generateDockerfile(props);
-      imageAsset = DockerImageCode.fromImageAsset(sourceDir, {
-        buildArgs: {
-          NODE_ENV: props.environment,
-        },
-        file: '.nixpacks/Dockerfile',
-        exclude: props.functionProps?.exclude || [],
-      });
-    } else {
-      // Custom Dockerfile
-      const dockerFile = props.functionProps?.dockerFile;
-      if (!dockerFile && props.buildProps?.buildSystem === 'Custom Dockerfile') {
-        throw new Error('dockerFile path is required when buildSystem is "Custom Dockerfile"');
-      }
-      
-      imageAsset = DockerImageCode.fromImageAsset(sourceDir, {
-        buildArgs: {
-          NODE_ENV: props.environment,
-          ...(Object.fromEntries(
-            Object.entries(props.functionProps?.dockerBuildArgs || {}).map(([key, value]) => [key, String(value)])
-          )),
-        },
-        file: dockerFile,
-        exclude: props.functionProps?.exclude || [],
-      });
+    // Custom Dockerfile
+    const dockerFile = props.functionProps?.dockerFile;
+    if (!dockerFile) {
+      throw new Error('dockerFile path is required for container Lambda functions');
     }
+
+    imageAsset = DockerImageCode.fromImageAsset(sourceDir, {
+      buildArgs: {
+        NODE_ENV: props.environment,
+        ...(Object.fromEntries(
+          Object.entries(props.functionProps?.dockerBuildArgs || {}).map(([key, value]) => [key, String(value)])
+        )),
+      },
+      file: dockerFile,
+      exclude: props.functionProps?.exclude || [],
+    });
     
     // Create the Lambda function using the Docker image
     const lambdaFunction = new DockerImageFunction(this, "ContainerFunction", {
@@ -353,7 +313,7 @@ export class FunctionsConstruct extends Construct {
 
     const apiGateway = new HttpApi(this, "API", {
       apiName: `${this.resourceIdPrefix}-api`,
-      description: `Connects the ${this.resourceIdPrefix} CloudFront distribution with the ${this.resourceIdPrefix} Lambda function to make it publicly available.`,
+      description: `Makes ${this.resourceIdPrefix} Lambda function publicly available.`,
       // The app does not allow any cross-origin access by purpose: the app should not be embeddable anywhere
       corsPreflight: undefined,
       defaultIntegration: lambdaIntegration,
