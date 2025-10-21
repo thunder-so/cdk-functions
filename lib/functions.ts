@@ -47,15 +47,15 @@ export class FunctionsConstruct extends Construct {
     this.rootDir = sanitizePath(props?.rootDir);
     this.codeDir = sanitizePath(props.functionProps?.codeDir);
 
-  // Determine Lambda function type based on whether a Dockerfile path was provided
-  const isContainerLambda = !!props.functionProps?.dockerFile;
+    // Determine Lambda function type based on whether a Dockerfile path was provided
+    const isContainerLambda = !!props.functionProps?.dockerFile;
     
     this.lambdaFunction = isContainerLambda
       ? this.createContainerLambdaFunction(props)
       : this.createLambdaFunction(props);
 
     // Handle provisioned concurrency if specified
-    if (props.functionProps?.provisionedConcurrency !== undefined) {
+    if (props.functionProps?.provisionedConcurrency && props.functionProps.provisionedConcurrency > 0) {
       // Provisioned concurrency requires the creation of a version and an alias
       const version = this.lambdaFunction.currentVersion;
       new Alias(this, 'LambdaAlias', {
@@ -190,7 +190,7 @@ export class FunctionsConstruct extends Construct {
         NODE_OPTIONS: '--enable-source-maps',
         NITRO_PRESET: 'aws-lambda',
       },
-      reservedConcurrentExecutions: props.functionProps?.reservedConcurrency,
+      reservedConcurrentExecutions: props.functionProps?.reservedConcurrency && props.functionProps.reservedConcurrency > 0 ? props.functionProps.reservedConcurrency : undefined,
     });
 
     // Add ECR permissions to the Lambda execution role
@@ -258,7 +258,7 @@ export class FunctionsConstruct extends Construct {
         NODE_OPTIONS: '--enable-source-maps',
         NITRO_PRESET: 'aws-lambda',
       },
-      reservedConcurrentExecutions: props.functionProps?.reservedConcurrency,
+      reservedConcurrentExecutions: props.functionProps?.reservedConcurrency && props.functionProps.reservedConcurrency > 0 ? props.functionProps.reservedConcurrency : undefined,
       layers: props.functionProps?.bunLayerArn
         ? [LayerVersion.fromLayerVersionArn(this, 'BunLayer', props.functionProps.bunLayerArn)]
         : [],

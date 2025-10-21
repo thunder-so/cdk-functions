@@ -25,11 +25,11 @@ export class PipelineConstruct extends Construct {
 
     this.resourceIdPrefix = `${props.application.substring(0, 7)}-${props.service.substring(0, 7)}-${props.environment.substring(0, 7)}`.substring(0, 23).toLowerCase();
     
-  // Container build is enabled when a Dockerfile path is provided on the function props
-  const isContainerBuild = !!props.functionProps?.dockerFile;
+    // Container build is enabled when a Dockerfile path is provided on the function props
+    const isContainerBuild = !!props.functionProps?.dockerFile;
     
     if (isContainerBuild) {
-      // create container pipeline (handles both Custom Dockerfile and Nixpacks)
+      // create container pipeline
       this.codePipeline = this.createContainerPipeline(props);
     } else {
       // create build project
