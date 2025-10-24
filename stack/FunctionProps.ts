@@ -25,7 +25,6 @@ export interface PipelineProps {
     readonly runtime_version?: string|number;
     readonly installcmd?: string;
     readonly buildcmd?: string;
-    readonly startcmd?: string;
     readonly include?: string[];
     readonly exclude?: string[];
     readonly environment?: Array<{ [key: string]: string; }>;
@@ -154,6 +153,11 @@ export interface AppProps extends StackProps {
    * Debug
    */
   readonly debug?: boolean;
+  /**
+   * Optional: directory containing the context for deployment
+   * Used for deployments with cdk.context.json
+   */
+  readonly contextDirectory?: string;
   /**
    * The AWS environment (account/region) where this stack will be deployed.
    */

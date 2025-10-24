@@ -2,8 +2,6 @@ import fs from 'fs';
 // @ts-expect-error library not fully ESM compatible
 import fse from 'fs-extra/esm';
 import path from 'path';
-import { fileURLToPath } from 'url';
-import { execSync } from 'child_process';
 import { Aws, Duration, CfnOutput } from 'aws-cdk-lib';
 import { Effect, PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import { Construct } from 'constructs';
@@ -38,14 +36,14 @@ export class FunctionsConstruct extends Construct {
     // Set the resource prefix
     this.resourceIdPrefix = `${props.application.substring(0, 7)}-${props.service.substring(0, 7)}-${props.environment.substring(0, 7)}`.substring(0, 23).toLowerCase();
 
-    // Sanitize paths to remove leading and trailing slashes
+    // Sanitize paths to ensure valid unix directory paths
     const sanitizePath = (path: string | undefined): string => {
       if (!path) return '';
-      return path.replace(/^\/+|\/+$/g, '');
+      return path.replace(/[^a-zA-Z0-9._\-@#$%^&*+=~ /]|\/+/g, m => m.includes('/') ? '/' : '').replace(/^\/+|\/+$/g, '')
     };
 
-    this.rootDir = sanitizePath(props?.rootDir);
-    this.codeDir = sanitizePath(props.functionProps?.codeDir);
+    this.rootDir = path.join(props.contextDirectory || '', sanitizePath(props?.rootDir));
+    this.codeDir = path.join(this.rootDir, sanitizePath(props?.functionProps?.codeDir));
 
     // Determine Lambda function type based on whether a Dockerfile path was provided
     const isContainerLambda = !!props.functionProps?.dockerFile;
@@ -132,14 +130,11 @@ export class FunctionsConstruct extends Construct {
    * 
    * @private
    */
-  private includeFilesAndDirectories(includes: string[]): void {
-    const rootPath = this.rootDir ? path.resolve(this.rootDir) : process.cwd();
-    const codePath = this.codeDir ? path.resolve(this.codeDir) : rootPath;
-    
+  private includeFilesAndDirectories(includes: string[]): void {    
     includes.forEach(file => {
-      const srcFile = path.join(rootPath, file);
+      const srcFile = path.join(this.rootDir, file);
       if (fs.existsSync(srcFile)) {
-        const destFile = path.join(codePath, file);
+        const destFile = path.join(this.codeDir, file);
         fse.copySync(srcFile, destFile);
       }
     });
@@ -154,7 +149,6 @@ export class FunctionsConstruct extends Construct {
    */
   private createContainerLambdaFunction(props: FunctionProps): Function {
     let imageAsset;
-    const sourceDir = this.rootDir ? path.resolve(this.rootDir) : process.cwd();
 
     // Custom Dockerfile
     const dockerFile = props.functionProps?.dockerFile;
@@ -162,7 +156,7 @@ export class FunctionsConstruct extends Construct {
       throw new Error('dockerFile path is required for container Lambda functions');
     }
 
-    imageAsset = DockerImageCode.fromImageAsset(sourceDir, {
+    imageAsset = DockerImageCode.fromImageAsset(this.rootDir, {
       buildArgs: {
         NODE_ENV: props.environment,
         ...(Object.fromEntries(
@@ -236,16 +230,13 @@ export class FunctionsConstruct extends Construct {
     }
 
     // Create the Lambda function
-    const rootPath = this.rootDir ? path.resolve(this.rootDir) : process.cwd();
-    const codeDirectory = path.join(rootPath, this.codeDir || '');
-
     const lambdaFunction = new Function(this, 'Function', {
       functionName: `${this.resourceIdPrefix}-function`,
       description: `Lambda function for ${this.resourceIdPrefix}`,
       runtime: props.functionProps?.runtime || Runtime.NODEJS_20_X,
       architecture: props.functionProps?.architecture || Architecture.ARM_64,
       handler: props.functionProps?.handler || 'index.handler',
-      code: Code.fromAsset(codeDirectory, {
+      code: Code.fromAsset(this.codeDir, {
         exclude: props.functionProps?.exclude || ['**/*.svg', '**/*.ico', '**/*.png', '**/*.jpg', '**/*.js.map'],
       }),
       timeout: props.functionProps?.timeout 
