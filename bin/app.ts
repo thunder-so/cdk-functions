@@ -16,12 +16,11 @@ function mapRuntime(rt?: string | Runtime): Runtime | undefined {
   const s = String(rt).toLowerCase();
   if (s === 'provided') return Runtime.PROVIDED_AL2023;
   if (s.startsWith('nodejs')) {
+    if (s.includes('22')) return Runtime.NODEJS_22_X;
     if (s.includes('20')) return Runtime.NODEJS_20_X;
     if (s.includes('18')) return Runtime.NODEJS_18_X;
   }
-  // Unknown runtime string: return undefined so construct can fall back to defaults
-  console.warn(`Unrecognized runtime string in context: "${rt}" — using stack defaults`);
-  return undefined;
+  return Runtime.NODEJS_22_X;
 }
 
 function mapArch(a?: string | Architecture): Architecture | undefined {

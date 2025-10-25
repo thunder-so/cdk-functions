@@ -27,18 +27,18 @@
     "watch": "tsc -b -w"
   },
   "devDependencies": {
-    "@types/jest": "^29.5.12",
-    "@types/node": "22.4.0",
-    "aws-cdk": "2.150.0",
-    "tsx": "^4.17.0",
-    "typescript": "~5.5.4"
+    "@types/jest": "^30.0.0",
+    "@types/node": "24.9.1",
+    "aws-cdk": "2.1031.0",
+    "tsx": "^4.20.6",
+    "typescript": "~5.9.3"
   },
   "dependencies": {
-    "aws-cdk-lib": "2.150.0",
-    "constructs": "^10.3.0",
-    "fs-extra": "^11.3.0",
-    "shelljs": "^0.8.5",
+    "aws-cdk-lib": "2.221.0",
+    "constructs": "^10.4.2",
+    "fs-extra": "^11.3.2",
+    "shelljs": "^0.10.0",
     "source-map-support": "^0.5.21",
-    "yaml": "^2.5.0"
+    "yaml": "^2.8.1"
   }
 }
