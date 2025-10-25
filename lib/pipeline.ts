@@ -1,3 +1,5 @@
+import fs from 'fs';
+import path from 'path';
 import { Construct } from "constructs";
 import { Duration, SecretValue, RemovalPolicy, CfnOutput, DockerImage } from "aws-cdk-lib";
 import { Pipeline, Artifact, PipelineType } from "aws-cdk-lib/aws-codepipeline";
@@ -19,6 +21,7 @@ export class PipelineConstruct extends Construct {
   private resourceIdPrefix: string;
   private codeBuildProject: PipelineProject;
   public codePipeline: Pipeline;
+  private customRuntimeImageUri?: string;
 
   constructor(scope: Construct, id: string, props: LambdaPipelineProps) {
     super(scope, id);
@@ -27,6 +30,15 @@ export class PipelineConstruct extends Construct {
     
     // Container build is enabled when a Dockerfile path is provided on the function props
     const isContainerBuild = !!props.functionProps?.dockerFile;
+    
+    // Only create custom runtime for ZIP builds (not container builds)
+    if (!isContainerBuild && props.buildProps?.customRuntime) {
+      const dockerAsset = new DockerImageAsset(this, 'RuntimeImage', {
+        directory: path.dirname(props.buildProps.customRuntime),
+        file: path.basename(props.buildProps.customRuntime),
+      });
+      this.customRuntimeImageUri = dockerAsset.imageUri;
+    }
     
     if (isContainerBuild) {
       // create container pipeline
@@ -270,14 +282,27 @@ export class PipelineConstruct extends Construct {
     const buildSpec = BuildSpec.fromObject({
       version: "0.2",
       phases: {
-        install: {
+        install: props.buildProps?.customRuntime ? {
+          commands: [
+            'echo "Starting build with custom runtime"',
+            'source /etc/profile',
+            `fnm use ${props.buildProps?.runtime_version || '24'}`,
+            'echo "Installing dependencies..."',
+            props.buildProps?.installcmd || 'npm install',
+            'echo "Install phase complete"'
+          ]
+        } : {
           "runtime-versions": {
-            [props.buildProps?.runtime || "nodejs"]: props.buildProps?.runtime_version || "20",
+            [props.buildProps?.runtime || "nodejs"]: props.buildProps?.runtime_version || "24",
           },
           commands: [props.buildProps?.installcmd || "npm install"],
         },
         build: {
-          commands: [props.buildProps?.buildcmd || "npm run build"],
+          commands: [
+            'echo "Starting build phase"',
+            props.buildProps?.buildcmd || 'npm run build',
+            'echo "Build phase complete"'
+          ],
         },
         post_build: {
           commands: [
@@ -316,9 +341,11 @@ export class PipelineConstruct extends Construct {
       projectName: `${this.resourceIdPrefix}-lambda-build`,
       buildSpec,
       environment: {
-        buildImage: LinuxArmBuildImage.AMAZON_LINUX_2_STANDARD_3_0,
-        computeType: ComputeType.SMALL,
-        privileged: false,
+        buildImage: this.customRuntimeImageUri
+          ? LinuxBuildImage.fromDockerRegistry(this.customRuntimeImageUri)
+          : LinuxArmBuildImage.AMAZON_LINUX_2_STANDARD_3_0,
+        computeType: ComputeType.MEDIUM,
+        privileged: this.customRuntimeImageUri ? true : false,
       },
       environmentVariables: buildEnvironmentVariables,
       timeout: Duration.minutes(10),
@@ -341,6 +368,22 @@ export class PipelineConstruct extends Construct {
         resources: [props.accessTokenSecretArn!],
       })
     );
+
+    // Allow project to pull custom runtime image from ECR if using custom runtime
+    if (this.customRuntimeImageUri) {
+      buildProject.addToRolePolicy(
+        new PolicyStatement({
+          effect: Effect.ALLOW,
+          actions: [
+            "ecr:GetAuthorizationToken",
+            "ecr:BatchCheckLayerAvailability",
+            "ecr:GetDownloadUrlForLayer",
+            "ecr:BatchGetImage"
+          ],
+          resources: ["*"]
+        })
+      );
+    }
 
     return buildProject;
   }
