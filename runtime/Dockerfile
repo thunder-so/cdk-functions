@@ -1,6 +1,6 @@
 FROM node:24-alpine
 
-RUN apk add --no-cache bash curl
+RUN apk add --no-cache bash curl zip
 RUN apk add fnm --repository=http://dl-cdn.alpinelinux.org/alpine/edge/testing/
 
 # Setup fnm environment and install Node.js versions

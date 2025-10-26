@@ -7,7 +7,7 @@ import { Effect, PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import { Construct } from 'constructs';
 import { Function, FunctionUrl, Runtime, Code, Alias, Architecture, Tracing, FunctionUrlAuthType, DockerImageCode, DockerImageFunction, LayerVersion, InlineCode } from 'aws-cdk-lib/aws-lambda';
 import { Repository } from 'aws-cdk-lib/aws-ecr';
-import { RetentionDays } from 'aws-cdk-lib/aws-logs';
+import { LogGroup, RetentionDays } from 'aws-cdk-lib/aws-logs';
 import { Certificate } from 'aws-cdk-lib/aws-certificatemanager';
 import { ARecord, AaaaRecord, RecordTarget, HostedZone } from 'aws-cdk-lib/aws-route53';
 import { Secret } from 'aws-cdk-lib/aws-secretsmanager';
@@ -167,6 +167,12 @@ export class FunctionsConstruct extends Construct {
       exclude: props.functionProps?.exclude || [],
     });
     
+    // Create log group for container function
+    const containerLogGroup = new LogGroup(this, 'ContainerFunctionLogGroup', {
+      logGroupName: `/aws/lambda/${this.resourceIdPrefix}-container-function`,
+      retention: RetentionDays.ONE_MONTH,
+    });
+
     // Create the Lambda function using the Docker image
     const lambdaFunction = new DockerImageFunction(this, "ContainerFunction", {
       functionName: `${this.resourceIdPrefix}-container-function`,
@@ -177,7 +183,7 @@ export class FunctionsConstruct extends Construct {
         ? Duration.seconds(props.functionProps.timeout) 
         : Duration.seconds(10),
       memorySize: props.functionProps?.memorySize || 1792,
-      logRetention: RetentionDays.ONE_MONTH,
+      logGroup: containerLogGroup,
       allowPublicSubnet: false,
       tracing: props.functionProps?.tracing ? Tracing.ACTIVE : Tracing.DISABLED,
       environment: {
@@ -229,6 +235,12 @@ export class FunctionsConstruct extends Construct {
       this.includeFilesAndDirectories(props.functionProps?.include);
     }
 
+    // Create log group for function
+    const functionLogGroup = new LogGroup(this, 'FunctionLogGroup', {
+      logGroupName: `/aws/lambda/${this.resourceIdPrefix}-function`,
+      retention: RetentionDays.ONE_MONTH,
+    });
+
     // Create the Lambda function
     const lambdaFunction = new Function(this, 'Function', {
       functionName: `${this.resourceIdPrefix}-function`,
@@ -243,7 +255,7 @@ export class FunctionsConstruct extends Construct {
         ? Duration.seconds(props.functionProps.timeout) 
         : Duration.seconds(10),
       memorySize: props.functionProps?.memorySize || 1792,
-      logRetention: RetentionDays.ONE_MONTH,
+      logGroup: functionLogGroup,
       tracing: props.functionProps?.tracing ? Tracing.ACTIVE : Tracing.DISABLED,
       environment: {
         NODE_OPTIONS: '--enable-source-maps',
