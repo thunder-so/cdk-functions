@@ -148,15 +148,13 @@ export class FunctionsConstruct extends Construct {
    * @private
    */
   private createContainerLambdaFunction(props: FunctionProps): Function {
-    let imageAsset;
-
     // Custom Dockerfile
     const dockerFile = props.functionProps?.dockerFile;
     if (!dockerFile) {
       throw new Error('dockerFile path is required for container Lambda functions');
     }
 
-    imageAsset = DockerImageCode.fromImageAsset(this.rootDir, {
+    const imageAsset = DockerImageCode.fromImageAsset(this.rootDir, {
       buildArgs: {
         NODE_ENV: props.environment,
         ...(Object.fromEntries(

@@ -7,7 +7,7 @@ import { GitHubSourceAction, GitHubTrigger, CodeBuildAction, LambdaInvokeAction 
 import { PipelineProject, LinuxArmBuildImage, LinuxBuildImage, ComputeType, BuildSpec, BuildEnvironmentVariable, BuildEnvironmentVariableType } from "aws-cdk-lib/aws-codebuild";
 import { Bucket, type IBucket, BlockPublicAccess, ObjectOwnership, BucketEncryption } from "aws-cdk-lib/aws-s3";
 import { PolicyStatement, Effect, ServicePrincipal } from "aws-cdk-lib/aws-iam";
-import { Function as LambdaFunction } from "aws-cdk-lib/aws-lambda";
+import { Function as LambdaFunction, Architecture } from "aws-cdk-lib/aws-lambda";
 import { DockerImageAsset } from "aws-cdk-lib/aws-ecr-assets";
 import { Repository } from "aws-cdk-lib/aws-ecr";
 import type { FunctionProps } from "../stack/FunctionProps";
@@ -138,7 +138,9 @@ export class PipelineConstruct extends Construct {
         },
       }),
       environment: {
-        buildImage: LinuxArmBuildImage.AMAZON_LINUX_2_STANDARD_3_0,
+        buildImage: props.functionProps?.architecture === Architecture.ARM_64 
+          ? LinuxArmBuildImage.AMAZON_LINUX_2_STANDARD_3_0 
+          : LinuxBuildImage.STANDARD_7_0,
         computeType: ComputeType.SMALL,
         privileged: true,
       },
@@ -191,7 +193,9 @@ export class PipelineConstruct extends Construct {
         },
       }),
       environment: {
-        buildImage: LinuxArmBuildImage.AMAZON_LINUX_2_STANDARD_3_0,
+        buildImage: props.functionProps?.architecture === Architecture.ARM_64 
+          ? LinuxArmBuildImage.AMAZON_LINUX_2_STANDARD_3_0 
+          : LinuxBuildImage.STANDARD_7_0,
         computeType: ComputeType.SMALL,
       },
       environmentVariables: {
@@ -356,7 +360,9 @@ export class PipelineConstruct extends Construct {
       environment: {
         buildImage: this.customRuntimeImageUri
           ? LinuxBuildImage.fromDockerRegistry(this.customRuntimeImageUri)
-          : LinuxArmBuildImage.AMAZON_LINUX_2_STANDARD_3_0,
+          : props.functionProps?.architecture === Architecture.ARM_64 
+            ? LinuxArmBuildImage.AMAZON_LINUX_2_STANDARD_3_0 
+            : LinuxBuildImage.STANDARD_7_0,
         computeType: ComputeType.MEDIUM,
         privileged: this.customRuntimeImageUri ? true : false,
       },
@@ -455,7 +461,9 @@ export class PipelineConstruct extends Construct {
         },
       }),
       environment: {
-        buildImage: LinuxArmBuildImage.AMAZON_LINUX_2_STANDARD_3_0,
+        buildImage: props.functionProps?.architecture === Architecture.ARM_64 
+          ? LinuxArmBuildImage.AMAZON_LINUX_2_STANDARD_3_0 
+          : LinuxBuildImage.STANDARD_7_0,
         computeType: ComputeType.SMALL,
       },
       environmentVariables: {
