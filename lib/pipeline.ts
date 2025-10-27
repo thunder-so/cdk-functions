@@ -278,6 +278,15 @@ export class PipelineConstruct extends Construct {
    * @returns project
    */
   private createCodeBuild(props: LambdaPipelineProps): PipelineProject {
+    // Determine the code directory path
+    const sanitizePath = (path: string | undefined): string => {
+      if (!path) return '';
+      return path.replace(/[^a-zA-Z0-9._\-@#$%^&*+=~ /]|\/+/g, m => m.includes('/') ? '/' : '').replace(/^\/+|\/+$/g, '')
+    };
+    
+    const rootDir = sanitizePath(props?.rootDir);
+    const codeDir = path.join(rootDir, sanitizePath(props?.functionProps?.codeDir));
+    
     // BuildSpec for Lambda (install, build, zip)
     const buildSpec = BuildSpec.fromObject({
       version: "0.2",
@@ -306,8 +315,12 @@ export class PipelineConstruct extends Construct {
         },
         post_build: {
           commands: [
-            // Zip the Lambda code for deployment
-            'zip -r function.zip .',
+            // Navigate to code directory and zip only its contents
+            `echo "Zipping code from directory: ${codeDir}"`,
+            `cd ${codeDir}`,
+            'zip -r ../function.zip . -x "*.git*" "node_modules/.cache/*" "*.log"',
+            'cd ..',
+            'ls -la function.zip'
           ],
         },
       },

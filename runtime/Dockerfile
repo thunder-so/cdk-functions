@@ -1,10 +1,11 @@
-FROM node:24-alpine
+FROM public.ecr.aws/docker/library/alpine:latest
 
 RUN apk add --no-cache bash curl zip
 RUN apk add fnm --repository=http://dl-cdn.alpinelinux.org/alpine/edge/testing/
 
 # Setup fnm environment and install Node.js versions
 RUN echo 'eval "$(fnm env --shell=bash --use-on-cd)"' >> /etc/profile && \
+    bash -c "export FNM_COREPACK_ENABLED=true" && \
     bash -c "source /etc/profile && fnm install 20 && fnm install 22 && fnm install 24 && fnm default 24"
 
 # Set environment
