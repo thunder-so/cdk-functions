@@ -1,6 +1,6 @@
 {
   "name": "@thunderso/cdk-functions",
-  "version": "0.7.4",
+  "version": "0.7.5",
   "description": "CDK Library for provisioning Lambda functions with various runtimes and configurations.",
   "tags": [
     "aws",
