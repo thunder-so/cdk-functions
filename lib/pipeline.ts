@@ -31,11 +31,14 @@ export class PipelineConstruct extends Construct {
     // Container build is enabled when a Dockerfile path is provided on the function props
     const isContainerBuild = !!props.functionProps?.dockerFile;
     
-    // Only create custom runtime for ZIP builds (not container builds)
-    if (!isContainerBuild && props.buildProps?.customRuntime) {
+    // Create custom runtime
+    if (props.buildProps?.customRuntime) {
       const dockerAsset = new DockerImageAsset(this, 'RuntimeImage', {
         directory: path.dirname(props.buildProps.customRuntime),
         file: path.basename(props.buildProps.customRuntime),
+        buildArgs: {
+          NODE_VERSION: props.buildProps?.runtime_version as string || '24'
+        }
       });
       this.customRuntimeImageUri = dockerAsset.imageUri;
     }
@@ -122,7 +125,7 @@ export class PipelineConstruct extends Construct {
           },
           build: {
             commands: [
-              `docker build -t $ECR_REPO:$IMAGE_TAG -f ${props.functionProps!.dockerFile} .`,
+              `docker build -t $ECR_REPO:$IMAGE_TAG --build-arg NODE_VERSION=${props.buildProps?.runtime_version} -f ${props.functionProps!.dockerFile} .`,
               "docker push $ECR_REPO:$IMAGE_TAG",
             ],
           },
@@ -138,9 +141,11 @@ export class PipelineConstruct extends Construct {
         },
       }),
       environment: {
-        buildImage: props.functionProps?.architecture === Architecture.ARM_64 
-          ? LinuxArmBuildImage.AMAZON_LINUX_2_STANDARD_3_0 
-          : LinuxBuildImage.STANDARD_7_0,
+        buildImage: this.customRuntimeImageUri
+          ? LinuxBuildImage.fromDockerRegistry(this.customRuntimeImageUri)
+          : props.functionProps?.architecture === Architecture.ARM_64 
+            ? LinuxArmBuildImage.AMAZON_LINUX_2_STANDARD_3_0 
+            : LinuxBuildImage.STANDARD_7_0,
         computeType: ComputeType.SMALL,
         privileged: true,
       },
@@ -166,6 +171,22 @@ export class PipelineConstruct extends Construct {
 
     // Permissions for CodeBuild to push to ECR
     props.repository.grantPullPush(dockerBuildProject);
+
+    // Allow dockerBuildProject to pull custom runtime image from ECR if using custom runtime
+    if (this.customRuntimeImageUri) {
+      dockerBuildProject.addToRolePolicy(
+        new PolicyStatement({
+          effect: Effect.ALLOW,
+          actions: [
+            "ecr:GetAuthorizationToken",
+            "ecr:BatchCheckLayerAvailability",
+            "ecr:GetDownloadUrlForLayer",
+            "ecr:BatchGetImage"
+          ],
+          resources: ["*"]
+        })
+      );
+    }
 
     // Deploy Action: Update Lambda function with new image
     const deployProject = new PipelineProject(this, "DockerDeployProject", {
