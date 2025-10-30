@@ -141,9 +141,7 @@ export class PipelineConstruct extends Construct {
         },
       }),
       environment: {
-        buildImage: this.customRuntimeImageUri
-          ? LinuxBuildImage.fromDockerRegistry(this.customRuntimeImageUri)
-          : props.functionProps?.architecture === Architecture.ARM_64 
+        buildImage: props.functionProps?.architecture === Architecture.ARM_64 
             ? LinuxArmBuildImage.AMAZON_LINUX_2_STANDARD_3_0 
             : LinuxBuildImage.STANDARD_7_0,
         computeType: ComputeType.SMALL,

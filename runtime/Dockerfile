@@ -16,35 +16,22 @@ RUN apk add --no-cache \
     zip \
     python3 \
     ca-certificates 
-
-RUN apk add --no-cache \
-    docker \
-    docker-cli \
-    aws-cli \
-    openrc
     
-# Install Yarn (via corepack, included with Node)
+# Install Yarn and PNPM (via corepack, included with Node)
 RUN corepack enable && \
-    corepack prepare yarn@stable --activate
+    corepack prepare yarn@stable --activate && \
+    corepack prepare pnpm@latest --activate
 
 ENV SHELL=/bin/bash
-
-# Install pnpm
-RUN curl -fsSL https://get.pnpm.io/install.sh | bash
 
 # Install Bun
 RUN curl -fsSL https://bun.sh/install | bash
 
-# Add Docker service
-RUN rc-update add docker boot
-
 # Verify everything works
 RUN node --version && \
     npm --version && \
-    corepack --version && \
     pnpm --version && \
-    yarn --version && \
-    docker --version
+    yarn --version 
 
 # Clear cache
 RUN rm -rf /var/cache/apk/*
