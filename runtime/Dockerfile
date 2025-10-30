@@ -18,8 +18,10 @@ RUN apk add --no-cache \
     ca-certificates 
 
 RUN apk add --no-cache \
+    docker \
     docker-cli \
-    aws-cli 
+    aws-cli \
+    openrc
     
 # Install Yarn (via corepack, included with Node)
 RUN corepack enable && \
@@ -33,14 +35,18 @@ RUN curl -fsSL https://get.pnpm.io/install.sh | bash
 # Install Bun
 RUN curl -fsSL https://bun.sh/install | bash
 
+# Add Docker service
+RUN rc-update add docker boot
+
 # Verify everything works
 RUN node --version && \
     npm --version && \
     corepack --version && \
     pnpm --version && \
-    yarn --version
+    yarn --version && \
+    docker --version
 
+# Clear cache
 RUN rm -rf /var/cache/apk/*
 
-# Default command
 CMD ["bash", "-c"]
