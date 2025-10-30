@@ -17,6 +17,10 @@ RUN apk add --no-cache \
     python3 \
     ca-certificates 
 
+RUN apk add --no-cache \
+    docker-cli \
+    aws-cli 
+    
 # Install Yarn (via corepack, included with Node)
 RUN corepack enable && \
     corepack prepare yarn@stable --activate
