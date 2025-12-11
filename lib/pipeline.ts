@@ -125,6 +125,7 @@ export class PipelineConstruct extends Construct {
           },
           build: {
             commands: [
+              ...(props.rootDir ? [`cd ${props.rootDir}`] : []),
               `docker build -t $ECR_REPO:$IMAGE_TAG --build-arg NODE_VERSION=${props.buildProps?.runtime_version} -f ${props.functionProps!.dockerFile} .`,
               "docker push $ECR_REPO:$IMAGE_TAG",
             ],
@@ -317,6 +318,7 @@ export class PipelineConstruct extends Construct {
         install: props.buildProps?.customRuntime ? {
           commands: [
             'echo "Starting build with custom runtime"',
+            ...(rootDir ? [`cd ${rootDir}`] : []),
             'echo "Installing dependencies..."',
             props.buildProps?.installcmd || 'npm install',
             'echo "Install phase complete"'
@@ -325,7 +327,10 @@ export class PipelineConstruct extends Construct {
           "runtime-versions": {
             [props.buildProps?.runtime || "nodejs"]: props.buildProps?.runtime_version || "24",
           },
-          commands: [props.buildProps?.installcmd || "npm install"],
+          commands: [
+            ...(rootDir ? [`cd ${rootDir}`] : []),
+            props.buildProps?.installcmd || "npm install"
+          ],
         },
         build: {
           commands: [
