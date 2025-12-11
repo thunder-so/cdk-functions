@@ -1,4 +1,3 @@
-import fs from 'fs';
 import path from 'path';
 import { Construct } from "constructs";
 import { Duration, SecretValue, RemovalPolicy, CfnOutput, DockerImage } from "aws-cdk-lib";
@@ -22,11 +21,20 @@ export class PipelineConstruct extends Construct {
   private codeBuildProject: PipelineProject;
   public codePipeline: Pipeline;
   private customRuntimeImageUri?: string;
+  private rootDir: string;
 
   constructor(scope: Construct, id: string, props: LambdaPipelineProps) {
     super(scope, id);
 
     this.resourceIdPrefix = `${props.application.substring(0, 7)}-${props.service.substring(0, 7)}-${props.environment.substring(0, 7)}`.substring(0, 23).toLowerCase();
+
+    // Sanitize paths to ensure valid unix directory paths
+    const sanitizePath = (path: string | undefined): string => {
+      if (!path) return '';
+      return path.replace(/[^a-zA-Z0-9._\-@#$%^&*+=~ /]|\/+/g, m => m.includes('/') ? '/' : '').replace(/^\/+|\/+$/g, '')
+    };
+
+    this.rootDir = sanitizePath(props?.rootDir);
     
     // Container build is enabled when a Dockerfile path is provided on the function props
     const isContainerBuild = !!props.functionProps?.dockerFile;
@@ -125,7 +133,7 @@ export class PipelineConstruct extends Construct {
           },
           build: {
             commands: [
-              ...(props.rootDir ? [`cd ${props.rootDir}`] : []),
+              ...(this.rootDir ? [`cd ${this.rootDir}`] : []),
               `docker build -t $ECR_REPO:$IMAGE_TAG --build-arg NODE_VERSION=${props.buildProps?.runtime_version} -f ${props.functionProps!.dockerFile} .`,
               "docker push $ECR_REPO:$IMAGE_TAG",
             ],
@@ -308,8 +316,7 @@ export class PipelineConstruct extends Construct {
       return path.replace(/[^a-zA-Z0-9._\-@#$%^&*+=~ /]|\/+/g, m => m.includes('/') ? '/' : '').replace(/^\/+|\/+$/g, '')
     };
     
-    const rootDir = sanitizePath(props?.rootDir);
-    const codeDir = path.join(rootDir, sanitizePath(props?.functionProps?.codeDir));
+    const codeDir = path.join(this.rootDir, sanitizePath(props?.functionProps?.codeDir));
     
     // BuildSpec for Lambda (install, build, zip)
     const buildSpec = BuildSpec.fromObject({
@@ -318,7 +325,7 @@ export class PipelineConstruct extends Construct {
         install: props.buildProps?.customRuntime ? {
           commands: [
             'echo "Starting build with custom runtime"',
-            ...(rootDir ? [`cd ${rootDir}`] : []),
+            ...(this.rootDir ? [`cd ${this.rootDir}`] : []),
             'echo "Installing dependencies..."',
             props.buildProps?.installcmd || 'npm install',
             'echo "Install phase complete"'
@@ -328,7 +335,7 @@ export class PipelineConstruct extends Construct {
             [props.buildProps?.runtime || "nodejs"]: props.buildProps?.runtime_version || "24",
           },
           commands: [
-            ...(rootDir ? [`cd ${rootDir}`] : []),
+            ...(this.rootDir ? [`cd ${this.rootDir}`] : []),
             props.buildProps?.installcmd || "npm install"
           ],
         },
