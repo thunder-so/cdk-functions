@@ -146,7 +146,7 @@ export class PipelineConstruct extends Construct {
           },
         },
         artifacts: {
-          files: ["imageUri.txt"],
+          files: [this.rootDir ? `${this.rootDir}/imageUri.txt` : "imageUri.txt"],
         },
       }),
       environment: {
@@ -204,7 +204,7 @@ export class PipelineConstruct extends Construct {
           pre_build: {
             commands: [
               "echo 'Starting Lambda deployment...'",
-              "IMAGE_URI=$(cat imageUri.txt)",
+              `IMAGE_URI=$(cat ${this.rootDir ? `${this.rootDir}/imageUri.txt` : 'imageUri.txt'})`,
               "echo 'Deploying image:' $IMAGE_URI",
             ],
           },

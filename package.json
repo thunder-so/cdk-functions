@@ -27,9 +27,8 @@
     "watch": "tsc -b -w"
   },
   "devDependencies": {
-    "@types/jest": "^30.0.0",
     "@types/node": "24.9.1",
-    "aws-cdk": "2.1031.0",
+    "aws-cdk": "2.1023.0",
     "tsx": "^4.20.6",
     "typescript": "~5.9.3"
   },
