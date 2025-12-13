@@ -316,7 +316,7 @@ export class PipelineConstruct extends Construct {
       return path.replace(/[^a-zA-Z0-9._\-@#$%^&*+=~ /]|\/+/g, m => m.includes('/') ? '/' : '').replace(/^\/+|\/+$/g, '')
     };
     
-    const codeDir = path.join(this.rootDir, sanitizePath(props?.functionProps?.codeDir));
+    const codeDir = sanitizePath(props?.functionProps?.codeDir);
     
     // BuildSpec for Lambda (install, build, zip)
     const buildSpec = BuildSpec.fromObject({
