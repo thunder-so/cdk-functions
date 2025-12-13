@@ -358,7 +358,7 @@ export class PipelineConstruct extends Construct {
         },
       },
       artifacts: {
-        files: ["function.zip"],
+        files: [this.rootDir ? `${this.rootDir}/function.zip` : "function.zip"],
       },
     });
 
