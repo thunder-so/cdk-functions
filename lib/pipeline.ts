@@ -22,6 +22,7 @@ export class PipelineConstruct extends Construct {
   public codePipeline: Pipeline;
   private customRuntimeImageUri?: string;
   private rootDir: string;
+  private codeDir: string;
 
   constructor(scope: Construct, id: string, props: LambdaPipelineProps) {
     super(scope, id);
@@ -30,11 +31,13 @@ export class PipelineConstruct extends Construct {
 
     // Sanitize paths to ensure valid unix directory paths
     const sanitizePath = (path: string | undefined): string => {
-      if (!path) return '';
-      return path.replace(/[^a-zA-Z0-9._\-@#$%^&*+=~ /]|\/+/g, m => m.includes('/') ? '/' : '').replace(/^\/+|\/+$/g, '')
+      if (!path || path === '.' || path === './') return '';
+      // Remove leading/trailing slashes and normalize multiple slashes
+      return path.replace(/^\/+|\/+$/g, '').replace(/\/+/g, '/');
     };
 
     this.rootDir = sanitizePath(props?.rootDir);
+    this.codeDir = sanitizePath(props?.functionProps?.codeDir);
     
     // Container build is enabled when a Dockerfile path is provided on the function props
     const isContainerBuild = !!props.functionProps?.dockerFile;
@@ -310,14 +313,6 @@ export class PipelineConstruct extends Construct {
    * @returns project
    */
   private createCodeBuild(props: LambdaPipelineProps): PipelineProject {
-    // Determine the code directory path
-    const sanitizePath = (path: string | undefined): string => {
-      if (!path) return '';
-      return path.replace(/[^a-zA-Z0-9._\-@#$%^&*+=~ /]|\/+/g, m => m.includes('/') ? '/' : '').replace(/^\/+|\/+$/g, '')
-    };
-    
-    const codeDir = sanitizePath(props?.functionProps?.codeDir);
-    
     // BuildSpec for Lambda (install, build, zip)
     const buildSpec = BuildSpec.fromObject({
       version: "0.2",
@@ -348,17 +343,15 @@ export class PipelineConstruct extends Construct {
         },
         post_build: {
           commands: [
-            // Navigate to code directory and zip only its contents
-            `echo "Zipping code from directory: ${codeDir}"`,
-            `cd ${codeDir}`,
-            'zip -r ../function.zip . -x "*.git*" "node_modules/.cache/*" "*.log"',
-            'cd ..',
+            `echo "Zipping code from directory: ${this.codeDir || '.'}"`,
+            'cd $CODEBUILD_SRC_DIR',
+            `zip -r function.zip ${this.rootDir ? `${this.rootDir}/${this.codeDir || '.'}` : this.codeDir || '.'} -x "*.git*" "node_modules/.cache/*" "*.log"`,
             'ls -la function.zip'
           ],
         },
       },
       artifacts: {
-        files: [this.rootDir ? `${this.rootDir}/function.zip` : "function.zip"],
+        files: ["function.zip"],
       },
     });
 
