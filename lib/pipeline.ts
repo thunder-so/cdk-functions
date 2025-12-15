@@ -344,8 +344,9 @@ export class PipelineConstruct extends Construct {
         post_build: {
           commands: [
             `echo "Zipping code from directory: ${this.codeDir || '.'}"`,
+            `cd ${this.codeDir || '.'}`,
+            `zip -r $CODEBUILD_SRC_DIR/function.zip . -x "*.git*" "node_modules/.cache/*" "*.log"`,
             'cd $CODEBUILD_SRC_DIR',
-            `zip -r function.zip ${this.rootDir ? `${this.rootDir}/${this.codeDir || '.'}` : this.codeDir || '.'} -x "*.git*" "node_modules/.cache/*" "*.log"`,
             'ls -la function.zip'
           ],
         },
